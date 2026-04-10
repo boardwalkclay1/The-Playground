@@ -1,5 +1,3 @@
-# backend/main.py
-
 from pathlib import Path
 from typing import Dict, Any
 from fastapi import FastAPI, HTTPException
@@ -11,11 +9,7 @@ from pydantic import BaseModel
 from generator.orchestrator import run_universal_generator
 from assistant import AIAgent
 
-# Optional modular imports (ensure these files exist in backend/)
-# project_manager.py must expose: list_projects, create_project, delete_project, duplicate_project, rename_project
-# files_api.py must expose an APIRouter named `router`
-# terminal_api.py must expose an APIRouter named `router`
-# microcontroller.engine must expose: generate_firmware, flash_firmware
+# Optional modular imports (fall back if missing)
 try:
     from project_manager import list_projects, create_project, delete_project, duplicate_project, rename_project
 except Exception:
@@ -202,12 +196,11 @@ def api_rename_project(payload: ProjectRenameRequest):
 
 
 # -----------------------------
-# FILES / FILETREE ROUTER (if modular file exists)
+# FILES / FILETREE ROUTER (modular or inline)
 # -----------------------------
 if files_router is not None:
     app.include_router(files_router, prefix="/api")
 else:
-    # Minimal inline file endpoints if files_api is not present
     @app.get("/api/files/tree/{project_name}")
     def api_files_tree(project_name: str):
         project_path = PROJECTS_ROOT / project_name
@@ -259,19 +252,18 @@ else:
 
 
 # -----------------------------
-# TERMINAL ROUTER (if modular terminal_api exists)
+# TERMINAL ROUTER (modular or fallback)
 # -----------------------------
 if terminal_router is not None:
     app.include_router(terminal_router, prefix="/api")
 else:
-    # Minimal terminal endpoint using assistant RunTools if available
     @app.post("/api/terminal/run")
     def api_terminal_run(req: TerminalRequest):
         project_path = PROJECTS_ROOT / req.project_name
         if not project_path.exists():
             raise HTTPException(status_code=404, detail="Project not found")
 
-        # Use AIAgent.run with a "run command" prefix if RunTools isn't available
+        # Fallback: use AIAgent.run with a "run command" prefix
         agent = AIAgent()
         prompt = f"run command: {req.command}"
         result = agent.run(prompt, str(project_path))
