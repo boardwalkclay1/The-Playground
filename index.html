@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html data-theme="industrial">
+<head>
+  <meta charset="UTF-8" />
+  <title>Boardwalk Playground</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body class="layout-two-column">
+  <header class="topbar">
+    <div class="topbar-left">
+      <img src="/static/logo.png" class="logo" />
+      <span class="app-title">Boardwalk Playground</span>
+    </div>
+    <div class="topbar-right">
+      <button id="theme-toggle" class="btn btn-ghost">Theme: Industrial</button>
+    </div>
+  </header>
+
+  <main class="main-grid">
+    <aside class="left-column">
+      <section class="panel" id="panel-projects"></section>
+      <section class="panel" id="panel-filetree"></section>
+      <section class="panel" id="panel-plugins"></section>
+      <section class="panel" id="panel-cloudflare"></section>
+      <section class="panel" id="panel-rundeploy"></section>
+      <section class="panel" id="panel-capabilities"></section>
+    </aside>
+
+    <section class="right-column">
+      <section class="panel" id="panel-preview"></section>
+      <section class="panel" id="panel-main-view"></section>
+    </section>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
