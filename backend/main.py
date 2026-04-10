@@ -1,7 +1,4 @@
-# backend/main.py
-
 from pathlib import Path
-
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -21,9 +18,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Serve static files (CSS + app.js)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
+# -----------------------------
+# MODELS
+# -----------------------------
 class GeneratorRequest(BaseModel):
     prompt: str
     project_name: str
@@ -35,6 +36,9 @@ class AssistantRequest(BaseModel):
     project_name: str
 
 
+# -----------------------------
+# GENERATOR ENDPOINT
+# -----------------------------
 @app.post("/api/generator/run")
 def api_generator_run(req: GeneratorRequest):
     result = run_universal_generator(
@@ -51,9 +55,13 @@ def api_generator_run(req: GeneratorRequest):
     }
 
 
+# -----------------------------
+# AI ASSISTANT ENDPOINT
+# -----------------------------
 @app.post("/api/assistant/run")
 def api_assistant_run(req: AssistantRequest):
     project_path = PROJECTS_ROOT / req.project_name
+
     if not project_path.exists():
         raise HTTPException(status_code=404, detail="Project not found")
 
@@ -63,6 +71,9 @@ def api_assistant_run(req: AssistantRequest):
     return result
 
 
+# -----------------------------
+# PREVIEW ENDPOINT
+# -----------------------------
 @app.get("/preview/{project_name}", response_class=HTMLResponse)
 def preview_project(project_name: str):
     project_path = PROJECTS_ROOT / project_name
