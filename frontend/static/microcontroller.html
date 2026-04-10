@@ -1,0 +1,48 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Microcontroller Builder</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <main class="main-grid">
+    <section class="panel">
+      <h2>Microcontroller Builder</h2>
+      <textarea id="mcu-prompt" placeholder="Describe firmware"></textarea>
+      <div>
+        <input id="mcu-project" placeholder="project name (optional)" />
+        <button id="mcu-gen">Generate</button>
+        <button id="mcu-flash">Flash</button>
+      </div>
+      <pre id="mcu-out"></pre>
+    </section>
+  </main>
+  <script>
+    async function postJSON(path, body) {
+      const res = await fetch(path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      return res.json();
+    }
+    document.getElementById("mcu-gen").addEventListener("click", async () => {
+      const prompt = document.getElementById("mcu-prompt").value.trim();
+      const project = document.getElementById("mcu-project").value.trim() || "mcu-sandbox";
+      if (!prompt) return alert("Enter prompt");
+      const out = document.getElementById("mcu-out");
+      out.textContent = "Generating...";
+      const res = await postJSON("/api/microcontroller/generate", { project_name: project, prompt });
+      out.textContent = JSON.stringify(res, null, 2);
+    });
+    document.getElementById("mcu-flash").addEventListener("click", async () => {
+      const project = document.getElementById("mcu-project").value.trim() || "mcu-sandbox";
+      const out = document.getElementById("mcu-out");
+      out.textContent = "Flashing (stub)...";
+      const res = await postJSON("/api/microcontroller/flash", { project_name: project, port: null });
+      out.textContent = JSON.stringify(res, null, 2);
+    });
+  </script>
+</body>
+</html>
