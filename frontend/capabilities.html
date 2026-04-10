@@ -50,175 +50,235 @@
 
   <main class="page-main">
     <section class="panel">
-      <h2>Capabilities</h2>
+      <h2>Capabilities · Complete Guide</h2>
+
+      <!-- CORE ENGINE -->
+      <div class="dropdown">
+        <div class="dropdown-title">Core Engine · What This Platform Actually Is <span>▼</span></div>
+        <div class="dropdown-content">
+          Boardwalk Playground is not a dashboard.  
+          It is a **local-first software factory**.  
+          It can generate entire apps, Workers, APIs, UIs, templates, and full project structures.  
+          <br><br>
+          This is the machine that builds the apps you want:  
+          music generator, comic studio, rideshare, laundry, skating, Roll Show, video generator — all of it.  
+          <br><br>
+          You define the blueprint.  
+          The Playground builds the project, files, Worker, API calls, UI pages, and deploy pipeline.
+        </div>
+      </div>
 
       <!-- PROJECT ENGINE -->
       <div class="dropdown">
         <div class="dropdown-title">Project Workspace Engine <span>▼</span></div>
         <div class="dropdown-content">
-          This is the heart of the Playground.  
-          You can have multiple full-stack projects living inside your environment at the same time.  
-          The Project Switcher on the dashboard lets you instantly jump between them.  
+          This engine manages multiple full-stack apps at once.  
+          Each app lives in its own folder under `/projects`.  
           <br><br>
           **How you use it:**  
-          - Create a folder inside `/projects`  
-          - It instantly appears in the Project Switcher  
-          - Select it, and now EVERYTHING you do (edit, deploy, run) happens inside that project  
+          - Create a folder → it becomes a project  
+          - Switch projects instantly  
+          - Everything (edit, run, deploy) happens inside the selected project  
           <br>
-          This is how you manage multiple apps like a real studio.
+          This is how you run a whole ecosystem from one dashboard.
         </div>
       </div>
 
-      <!-- FILE SYSTEM -->
+      <!-- FILE ENGINE -->
       <div class="dropdown">
-        <div class="dropdown-title">File System Access <span>▼</span></div>
+        <div class="dropdown-title">File System Engine <span>▼</span></div>
         <div class="dropdown-content">
-          The FileTree panel shows you the entire structure of your selected project.  
-          Click any file and it opens instantly in the inline editor.  
+          This engine can create, edit, delete, and generate files and folders.  
+          It is the backbone of all app generation.  
           <br><br>
-          **How you use it:**  
-          - Click a file → it opens on the right  
-          - Edit it → hit Save  
-          - Want deeper editing? Open the full Editor page  
+          **It can generate:**  
+          - HTML, CSS, JS  
+          - Workers  
+          - API routes  
+          - Config files  
+          - Templates  
+          - Entire project structures  
           <br>
-          This is your local VS Code, but inside your dashboard.
+          This is how the Playground builds apps from scratch.
         </div>
       </div>
 
-      <!-- INLINE EDITOR -->
+      <!-- WORKER ENGINE -->
       <div class="dropdown">
-        <div class="dropdown-title">Inline Dashboard Editor <span>▼</span></div>
+        <div class="dropdown-title">Worker Generator & Cloudflare Engine <span>▼</span></div>
         <div class="dropdown-content">
-          This is for quick edits.  
-          You don’t have to leave the dashboard.  
+          The Playground can generate Cloudflare Workers, connect them, and deploy them.  
           <br><br>
-          **How you use it:**  
-          - Click a file in the FileTree  
-          - It opens in the main view  
-          - Edit → Save  
+          **It can create:**  
+          - worker.js  
+          - wrangler.toml  
+          - API routes  
+          - Bindings (D1, R2, KV, Queues)  
+          - Deployment scripts  
+          <br><br>
+          **It can deploy:**  
+          - Workers  
+          - Pages  
+          - D1  
+          - R2  
+          - KV  
+          - Queues  
           <br>
-          Perfect for fast fixes, config tweaks, and small changes.
+          This is how your apps get real backends.
         </div>
       </div>
 
-      <!-- FULL EDITOR -->
+      <!-- API ENGINE -->
       <div class="dropdown">
-        <div class="dropdown-title">Full Editor Page <span>▼</span></div>
+        <div class="dropdown-title">API Engine · Call ANY API <span>▼</span></div>
         <div class="dropdown-content">
-          When you need to focus, this is your zone.  
-          Full-screen, distraction-free, deep editing.  
+          The Playground can generate API clients and connect to ANY external API.  
           <br><br>
-          **How you use it:**  
-          - Go to `/editor`  
-          - Type the project name  
-          - Type the file path  
-          - Load → Edit → Save  
+          **It can call:**  
+          - AI APIs  
+          - Music APIs  
+          - Video APIs  
+          - Payment APIs  
+          - Map APIs  
+          - Weather APIs  
+          - ANY REST or GraphQL endpoint  
+          <br><br>
+          **It can generate:**  
+          - Worker → external API calls  
+          - Frontend → Worker → external API calls  
+          - Authenticated requests  
+          - Streaming responses  
           <br>
-          This is your “real coding” workspace.
+          This is how your apps talk to the world.
         </div>
       </div>
 
-      <!-- CLOUDFLARE SUITE -->
+      <!-- UI ENGINE -->
       <div class="dropdown">
-        <div class="dropdown-title">Cloudflare Suite <span>▼</span></div>
+        <div class="dropdown-title">UI Generator · Pages & Panels <span>▼</span></div>
         <div class="dropdown-content">
-          This is your deployment engine.  
-          You can deploy Workers, Pages, D1, R2, KV, and Queues — all from your dashboard.  
+          The Playground can generate UI pages for any domain.  
           <br><br>
-          **How you use it:**  
-          - Use the quick panel for fast deploys  
-          - Or open the full Cloudflare page for detailed control  
-          - Logs appear instantly so you know what happened  
+          **It can create:**  
+          - Dashboard panels  
+          - Full pages  
+          - Forms  
+          - Editors  
+          - Media viewers  
+          - Custom interfaces  
           <br>
-          This is how you ship apps without leaving the Playground.
+          This is how each app gets its own UI.
         </div>
       </div>
 
-      <!-- GITHUB -->
+      <!-- DOMAIN APPS -->
+      <h3 style="margin-top:20px;">Domain App Families This Playground Can Build</h3>
+
+      <!-- MUSIC -->
       <div class="dropdown">
-        <div class="dropdown-title">GitHub Integration <span>▼</span></div>
+        <div class="dropdown-title">Music Generator App <span>▼</span></div>
         <div class="dropdown-content">
-          Bring any GitHub repo straight into your Playground.  
+          The Playground can generate a full music creation app.  
           <br><br>
-          **How you use it:**  
-          - Enter a repo URL  
-          - Choose a project name  
-          - Clone  
-          <br>
-          The repo becomes a project you can edit, run, and deploy.
+          **Includes:**  
+          - Track generator UI  
+          - Metadata editor  
+          - Playlist builder  
+          - Worker backend  
+          - API calls to music models  
+          - Export system  
         </div>
       </div>
 
-      <!-- RUN / DEPLOY -->
+      <!-- COMICS -->
       <div class="dropdown">
-        <div class="dropdown-title">Run / Deploy Engine <span>▼</span></div>
+        <div class="dropdown-title">Comic Book Studio <span>▼</span></div>
         <div class="dropdown-content">
-          This is how you execute your apps locally.  
+          The Playground can generate a full comic creation studio.  
           <br><br>
-          **How you use it:**  
-          - Select a project  
-          - Click “Run Backend” or “Run Frontend”  
-          - Logs appear in the main view  
-          <br>
-          This is your local dev server, but controlled from the dashboard.
+          **Includes:**  
+          - Page templates  
+          - Panel layouts  
+          - Speech bubble components  
+          - Image upload  
+          - Export to PDF/CBZ  
+          - Worker rendering  
         </div>
       </div>
 
-      <!-- PLUGINS -->
+      <!-- RIDESHARE -->
       <div class="dropdown">
-        <div class="dropdown-title">Plugin System <span>▼</span></div>
+        <div class="dropdown-title">Rideshare App <span>▼</span></div>
         <div class="dropdown-content">
-          Plugins let you expand the Playground into ANYTHING.  
+          The Playground can generate a rideshare sandbox.  
           <br><br>
-          **How you use it:**  
-          - Add a plugin folder  
-          - It appears in the Plugins page  
-          - Plugins can add panels, pages, or backend logic  
-          <br>
-          This is how you scale the Playground into a full ecosystem.
+          **Includes:**  
+          - Driver/rider schema  
+          - Trip requests  
+          - Map UI  
+          - Pricing logic  
+          - Worker backend  
         </div>
       </div>
 
-      <!-- PREVIEW -->
+      <!-- LAUNDRY -->
       <div class="dropdown">
-        <div class="dropdown-title">Preview Panel <span>▼</span></div>
+        <div class="dropdown-title">Laundry App <span>▼</span></div>
         <div class="dropdown-content">
-          The iframe on the dashboard is your live preview window.  
+          The Playground can generate a laundry operations app.  
           <br><br>
-          **How you use it:**  
-          - Point it at your local app  
-          - Point it at generated pages  
-          - Use it to test UI instantly  
-          <br>
-          This is your built-in browser.
+          **Includes:**  
+          - Pickup/dropoff flows  
+          - Order tracking  
+          - Time slots  
+          - Worker backend  
         </div>
       </div>
 
-      <!-- LOGS -->
+      <!-- SKATING -->
       <div class="dropdown">
-        <div class="dropdown-title">Logs & Diagnostics <span>▼</span></div>
+        <div class="dropdown-title">Skating App <span>▼</span></div>
         <div class="dropdown-content">
-          Every action the Playground takes can be logged.  
+          The Playground can generate a skating flow app.  
           <br><br>
-          **How you use it:**  
-          - Open `/logs`  
-          - See system events, deploy logs, builder logs  
-          <br>
-          This is your debugging center.
+          **Includes:**  
+          - Sessions  
+          - Spots  
+          - Combos  
+          - Video clips  
+          - BeltLine runs  
+          - Media storage  
         </div>
       </div>
 
-      <!-- THEMES -->
+      <!-- ROLL SHOW -->
       <div class="dropdown">
-        <div class="dropdown-title">Theme Engine <span>▼</span></div>
+        <div class="dropdown-title">Roll Show Studio <span>▼</span></div>
         <div class="dropdown-content">
-          Switch between Industrial and Neon Hacker instantly.  
+          The Playground can generate the full Roll Show platform.  
           <br><br>
-          **How you use it:**  
-          - Click the Theme button  
-          - The entire UI updates instantly  
-          <br>
-          This is your visual identity switch.
+          **Includes:**  
+          - Episodes  
+          - Acts  
+          - Performers  
+          - Rights  
+          - Payouts  
+          - Lead gen  
+          - Media library  
+        </div>
+      </div>
+
+      <!-- VIDEO -->
+      <div class="dropdown">
+        <div class="dropdown-title">Video Generator App <span>▼</span></div>
+        <div class="dropdown-content">
+          The Playground can generate a full video generation app.  
+          <br><br>
+          **Includes:**  
+          - Shot list schema  
+          - Script → scene mapping  
+          - Render/export hooks  
+          - Worker backend  
         </div>
       </div>
 
