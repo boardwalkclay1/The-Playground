@@ -1,5 +1,3 @@
-// static/app.js
-
 let currentProjectName = null;
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -7,6 +5,10 @@ document.addEventListener("DOMContentLoaded", () => {
   setupAssistantPanel();
 });
 
+
+// -----------------------------------------------------
+// GENERATOR PANEL
+// -----------------------------------------------------
 function setupGeneratorPanel() {
   const promptEl = document.getElementById("generator-input");
   const runBtn = document.getElementById("generator-run");
@@ -60,6 +62,10 @@ function setupGeneratorPanel() {
   });
 }
 
+
+// -----------------------------------------------------
+// AI ASSISTANT PANEL
+// -----------------------------------------------------
 function setupAssistantPanel() {
   const mainView = document.getElementById("panel-main-view");
   if (!mainView) return;
@@ -73,7 +79,7 @@ function setupAssistantPanel() {
   const textarea = document.createElement("textarea");
   textarea.id = "assistant-input";
   textarea.placeholder =
-    "Describe what you want the assistant to do in the current project...";
+    "Tell the assistant what to do inside the current project...";
 
   const button = document.createElement("button");
   button.id = "assistant-run";
@@ -120,6 +126,10 @@ function setupAssistantPanel() {
   });
 }
 
+
+// -----------------------------------------------------
+// PREVIEW PANEL
+// -----------------------------------------------------
 function loadPreview(projectName) {
   const previewPanel = document.getElementById("panel-preview");
   if (!previewPanel) return;
