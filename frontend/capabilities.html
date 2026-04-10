@@ -8,25 +8,26 @@
     .dropdown {
       border: 1px solid var(--border);
       border-radius: 8px;
-      margin-bottom: 10px;
+      margin-bottom: 12px;
       background: var(--bg-panel);
       cursor: pointer;
-      padding: 10px 12px;
+      padding: 12px 14px;
     }
     .dropdown-title {
-      font-weight: 600;
+      font-weight: 700;
       font-size: 14px;
       color: var(--accent);
       display: flex;
       justify-content: space-between;
       align-items: center;
+      letter-spacing: 0.05em;
     }
     .dropdown-content {
       display: none;
-      margin-top: 8px;
+      margin-top: 10px;
       font-size: 12px;
       color: var(--text);
-      line-height: 1.5em;
+      line-height: 1.6em;
     }
     .dropdown.open .dropdown-content {
       display: block;
@@ -55,9 +56,16 @@
       <div class="dropdown">
         <div class="dropdown-title">Project Workspace Engine <span>▼</span></div>
         <div class="dropdown-content">
-          Create and switch between multiple projects.  
-          The dashboard reads your project folders and lets you pick one.  
-          Everything you do—editing, deploying, running—happens inside the selected project.
+          This is the heart of the Playground.  
+          You can have multiple full-stack projects living inside your environment at the same time.  
+          The Project Switcher on the dashboard lets you instantly jump between them.  
+          <br><br>
+          **How you use it:**  
+          - Create a folder inside `/projects`  
+          - It instantly appears in the Project Switcher  
+          - Select it, and now EVERYTHING you do (edit, deploy, run) happens inside that project  
+          <br>
+          This is how you manage multiple apps like a real studio.
         </div>
       </div>
 
@@ -65,10 +73,15 @@
       <div class="dropdown">
         <div class="dropdown-title">File System Access <span>▼</span></div>
         <div class="dropdown-content">
-          Use the FileTree panel to browse your project.  
-          Click any file to open it in the inline editor.  
-          Save changes instantly.  
-          For deep work, open the full Editor page.
+          The FileTree panel shows you the entire structure of your selected project.  
+          Click any file and it opens instantly in the inline editor.  
+          <br><br>
+          **How you use it:**  
+          - Click a file → it opens on the right  
+          - Edit it → hit Save  
+          - Want deeper editing? Open the full Editor page  
+          <br>
+          This is your local VS Code, but inside your dashboard.
         </div>
       </div>
 
@@ -76,9 +89,15 @@
       <div class="dropdown">
         <div class="dropdown-title">Inline Dashboard Editor <span>▼</span></div>
         <div class="dropdown-content">
-          When you click a file in the FileTree, it opens in the right column.  
-          Edit it directly and hit Save.  
-          This is perfect for quick fixes and small edits.
+          This is for quick edits.  
+          You don’t have to leave the dashboard.  
+          <br><br>
+          **How you use it:**  
+          - Click a file in the FileTree  
+          - It opens in the main view  
+          - Edit → Save  
+          <br>
+          Perfect for fast fixes, config tweaks, and small changes.
         </div>
       </div>
 
@@ -86,10 +105,16 @@
       <div class="dropdown">
         <div class="dropdown-title">Full Editor Page <span>▼</span></div>
         <div class="dropdown-content">
-          Go to /editor for a full-screen editing environment.  
-          Load any file by typing its path.  
-          Save instantly.  
-          This is your deep-work zone.
+          When you need to focus, this is your zone.  
+          Full-screen, distraction-free, deep editing.  
+          <br><br>
+          **How you use it:**  
+          - Go to `/editor`  
+          - Type the project name  
+          - Type the file path  
+          - Load → Edit → Save  
+          <br>
+          This is your “real coding” workspace.
         </div>
       </div>
 
@@ -97,9 +122,15 @@
       <div class="dropdown">
         <div class="dropdown-title">Cloudflare Suite <span>▼</span></div>
         <div class="dropdown-content">
-          Deploy Workers, Pages, D1, R2, KV, and Queues.  
-          Use the quick panel for fast actions or open the full Cloudflare page for detailed control.  
-          Logs appear instantly so you can see what happened.
+          This is your deployment engine.  
+          You can deploy Workers, Pages, D1, R2, KV, and Queues — all from your dashboard.  
+          <br><br>
+          **How you use it:**  
+          - Use the quick panel for fast deploys  
+          - Or open the full Cloudflare page for detailed control  
+          - Logs appear instantly so you know what happened  
+          <br>
+          This is how you ship apps without leaving the Playground.
         </div>
       </div>
 
@@ -107,9 +138,14 @@
       <div class="dropdown">
         <div class="dropdown-title">GitHub Integration <span>▼</span></div>
         <div class="dropdown-content">
-          Clone any GitHub repo into a project.  
-          The backend handles the clone and logs the events.  
-          After cloning, the project appears in your Project Switcher.
+          Bring any GitHub repo straight into your Playground.  
+          <br><br>
+          **How you use it:**  
+          - Enter a repo URL  
+          - Choose a project name  
+          - Clone  
+          <br>
+          The repo becomes a project you can edit, run, and deploy.
         </div>
       </div>
 
@@ -117,9 +153,14 @@
       <div class="dropdown">
         <div class="dropdown-title">Run / Deploy Engine <span>▼</span></div>
         <div class="dropdown-content">
-          Start backend or frontend processes for your project.  
-          Use the quick panel for instant runs.  
-          Logs appear in the main view so you can see what’s happening.
+          This is how you execute your apps locally.  
+          <br><br>
+          **How you use it:**  
+          - Select a project  
+          - Click “Run Backend” or “Run Frontend”  
+          - Logs appear in the main view  
+          <br>
+          This is your local dev server, but controlled from the dashboard.
         </div>
       </div>
 
@@ -127,9 +168,14 @@
       <div class="dropdown">
         <div class="dropdown-title">Plugin System <span>▼</span></div>
         <div class="dropdown-content">
-          Add custom tools, modules, and UI panels.  
-          Plugins can extend the dashboard, add pages, or add backend logic.  
-          This is how the Playground grows with you.
+          Plugins let you expand the Playground into ANYTHING.  
+          <br><br>
+          **How you use it:**  
+          - Add a plugin folder  
+          - It appears in the Plugins page  
+          - Plugins can add panels, pages, or backend logic  
+          <br>
+          This is how you scale the Playground into a full ecosystem.
         </div>
       </div>
 
@@ -137,8 +183,14 @@
       <div class="dropdown">
         <div class="dropdown-title">Preview Panel <span>▼</span></div>
         <div class="dropdown-content">
-          The iframe on the dashboard can load any local app or generated output.  
-          Perfect for testing UI, static sites, or generated pages.
+          The iframe on the dashboard is your live preview window.  
+          <br><br>
+          **How you use it:**  
+          - Point it at your local app  
+          - Point it at generated pages  
+          - Use it to test UI instantly  
+          <br>
+          This is your built-in browser.
         </div>
       </div>
 
@@ -146,8 +198,13 @@
       <div class="dropdown">
         <div class="dropdown-title">Logs & Diagnostics <span>▼</span></div>
         <div class="dropdown-content">
-          View system logs, deployment logs, and builder events.  
-          The Logs page shows everything the backend reports.
+          Every action the Playground takes can be logged.  
+          <br><br>
+          **How you use it:**  
+          - Open `/logs`  
+          - See system events, deploy logs, builder logs  
+          <br>
+          This is your debugging center.
         </div>
       </div>
 
@@ -155,8 +212,13 @@
       <div class="dropdown">
         <div class="dropdown-title">Theme Engine <span>▼</span></div>
         <div class="dropdown-content">
-          Switch between Industrial and Neon Hacker themes instantly.  
-          The entire UI updates without reloading the page.
+          Switch between Industrial and Neon Hacker instantly.  
+          <br><br>
+          **How you use it:**  
+          - Click the Theme button  
+          - The entire UI updates instantly  
+          <br>
+          This is your visual identity switch.
         </div>
       </div>
 
