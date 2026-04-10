@@ -1,9 +1,46 @@
 <!DOCTYPE html>
-<html data-theme="industrial">
+<html data-theme="industrial" lang="en">
 <head>
   <meta charset="UTF-8" />
   <title>Boardwalk Playground Studio</title>
-  <link rel="stylesheet" href="static/style.css" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="/static/style.css" />
+  <style>
+    /* Minimal inline styles to ensure layout works until your CSS loads */
+    :root { --left-w: 360px; --gap: 12px; --panel-bg: #111; --panel-fg: #eaeaea; }
+    body { margin:0; font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background:#0f1720; color:var(--panel-fg); }
+    .topbar { display:flex; align-items:center; justify-content:space-between; padding:10px 16px; background:#0b1220; border-bottom:1px solid rgba(255,255,255,0.03); }
+    .topbar-left { display:flex; align-items:center; gap:12px; }
+    .logo { width:28px; height:28px; object-fit:contain; }
+    .app-title { font-weight:600; letter-spacing:0.2px; }
+    .topbar-right { display:flex; gap:8px; align-items:center; }
+    .btn { background:transparent; color:var(--panel-fg); border:1px solid rgba(255,255,255,0.04); padding:6px 10px; border-radius:6px; cursor:pointer; }
+    .btn-primary { background:#2563eb; border-color:transparent; }
+    .btn-accent { background:#f59e0b; border-color:transparent; color:#111; }
+    .main-grid { display:grid; grid-template-columns: var(--left-w) 1fr; gap:var(--gap); padding:12px; height:calc(100vh - 56px); box-sizing:border-box; }
+    .left-column { overflow:auto; padding:8px; display:flex; flex-direction:column; gap:10px; }
+    .right-column { overflow:auto; padding:8px; display:flex; flex-direction:column; gap:10px; }
+    .panel { background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.03); }
+    .panel h3 { margin:0 0 8px 0; font-size:14px; }
+    textarea { width:100%; min-height:80px; background:#071022; color:var(--panel-fg); border:1px solid rgba(255,255,255,0.03); padding:8px; border-radius:6px; resize:vertical; }
+    pre { background:#061021; color:#dbeafe; padding:8px; border-radius:6px; max-height:240px; overflow:auto; }
+    .preview-frame { width:100%; height:420px; border:1px solid rgba(255,255,255,0.03); border-radius:6px; background:#fff; }
+    .pm-controls, .file-ops { display:flex; gap:8px; margin-top:8px; }
+    input[type="text"], input[type="search"] { padding:8px; border-radius:6px; border:1px solid rgba(255,255,255,0.03); background:#071022; color:var(--panel-fg); width:100%; }
+    .pm-list, .filetree { margin-top:8px; max-height:260px; overflow:auto; }
+    .pm-row, .ft-node { display:flex; align-items:center; gap:8px; padding:6px 4px; border-radius:6px; }
+    .pm-row:hover, .ft-node:hover { background:rgba(255,255,255,0.01); }
+    .editor { display:flex; flex-direction:column; gap:8px; }
+    .editor-textarea { min-height:320px; width:100%; padding:10px; border-radius:6px; background:#071022; color:var(--panel-fg); border:1px solid rgba(255,255,255,0.03); font-family:monospace; }
+    .editor-controls { display:flex; gap:8px; }
+    details summary { cursor:pointer; padding:6px 0; }
+    .tabs { display:flex; gap:6px; }
+    .tab { padding:6px 10px; border-radius:6px; background:transparent; border:1px solid rgba(255,255,255,0.03); cursor:pointer; }
+    .tab.active { background:rgba(255,255,255,0.02); }
+    .small { font-size:12px; padding:4px 8px; }
+    .flex-row { display:flex; gap:8px; align-items:center; }
+    .muted { color:rgba(255,255,255,0.45); font-size:13px; }
+  </style>
 </head>
 
 <body class="layout-two-column">
@@ -11,11 +48,28 @@
   <!-- TOP BAR -->
   <header class="topbar">
     <div class="topbar-left">
-      <img src="/static/logo.png" class="logo" />
-      <span class="app-title">Boardwalk Playground Studio</span>
+      <img src="/static/logo.png" class="logo" alt="Boardwalk logo" />
+      <div>
+        <div class="app-title">Boardwalk Playground Studio</div>
+        <div class="muted">Local dev playground · generator · assistant · deploy</div>
+      </div>
     </div>
+
     <div class="topbar-right">
-      <button id="theme-toggle" class="btn btn-ghost">Theme: Industrial</button>
+      <div class="flex-row">
+        <select id="panel-switch" class="btn small" title="Quick switch panels">
+          <option value="">Quick panels</option>
+          <option value="panel-projects">Projects</option>
+          <option value="panel-filetree">File Tree</option>
+          <option value="panel-generator">Generator</option>
+          <option value="panel-ai">AI Assistant</option>
+          <option value="panel-terminal">Terminal</option>
+          <option value="panel-microcontroller">Microcontroller</option>
+          <option value="panel-capabilities">Capabilities</option>
+        </select>
+        <button id="theme-toggle" class="btn">Theme</button>
+        <button id="open-mcu-page" class="btn">Open MCU Page</button>
+      </div>
     </div>
   </header>
 
@@ -26,52 +80,117 @@
     <aside class="left-column">
 
       <!-- PROJECTS -->
-      <section class="panel" id="panel-projects"></section>
+      <section class="panel" id="panel-projects">
+        <h3>Projects</h3>
+        <div class="pm-controls">
+          <input id="pm-new-name" type="text" placeholder="New project name" />
+          <button id="pm-create" class="btn btn-primary">Create</button>
+        </div>
+        <div id="pm-list" class="pm-list"></div>
+      </section>
 
       <!-- FILE TREE -->
-      <section class="panel" id="panel-filetree"></section>
-
-      <!-- PLUGINS -->
-      <section class="panel" id="panel-plugins"></section>
-
-      <!-- CLOUDFLARE -->
-      <section class="panel" id="panel-cloudflare"></section>
-
-      <!-- RUN/DEPLOY -->
-      <section class="panel" id="panel-rundeploy"></section>
-
-      <!-- CAPABILITIES -->
-      <section class="panel" id="panel-capabilities"></section>
+      <section class="panel" id="panel-filetree">
+        <h3>File Tree</h3>
+        <div id="ft-root" class="filetree">No project selected</div>
+      </section>
 
       <!-- APP GENERATOR -->
       <section class="panel" id="panel-generator">
         <h3>App Generator</h3>
         <textarea id="generator-input" placeholder="Describe the app you want to build..."></textarea>
-        <button id="generator-run" class="btn btn-primary">Generate App</button>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button id="generator-run" class="btn btn-primary">Generate App</button>
+          <select id="generator-type" class="btn small">
+            <option value="generic">Generic</option>
+            <option value="web">Web App</option>
+            <option value="microcontroller">Microcontroller</option>
+            <option value="worker">Cloudflare Worker</option>
+          </select>
+        </div>
       </section>
 
       <!-- AI ASSISTANT -->
       <section class="panel" id="panel-ai">
         <h3>AI Assistant</h3>
         <textarea id="assistant-input" placeholder="Tell your AI what to do..."></textarea>
-        <button id="assistant-run" class="btn btn-secondary">Run Assistant</button>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button id="assistant-run" class="btn btn-secondary">Run Assistant</button>
+          <button id="assistant-chat-mode" class="btn small">Chat Mode</button>
+          <select id="assistant-action" class="btn small">
+            <option value="default">Action: default</option>
+            <option value="edit-file">Edit file</option>
+            <option value="run-command">Run command</option>
+            <option value="generate-mcu">Generate MCU</option>
+          </select>
+        </div>
         <pre id="assistant-output"></pre>
       </section>
 
       <!-- COMMAND TERMINAL -->
       <section class="panel" id="panel-terminal">
         <h3>Command Terminal</h3>
-        <textarea id="terminal-input" placeholder="Enter command..."></textarea>
-        <button id="terminal-run" class="btn btn-accent">Run Command</button>
-        <pre id="terminal-output"></pre>
+        <div class="tabs" role="tablist" aria-label="Terminal tabs">
+          <button class="tab active" data-tab="terminal">Terminal</button>
+          <button class="tab" data-tab="logs">Logs</button>
+          <button class="tab" data-tab="errors">Errors</button>
+        </div>
+
+        <div id="terminal-tab-terminal" style="margin-top:8px;">
+          <input id="terminal-input" type="text" placeholder="Enter command (e.g., git status)" />
+          <div style="display:flex;gap:8px;margin-top:8px;">
+            <button id="terminal-run" class="btn btn-accent">Run Command</button>
+            <button id="terminal-clear" class="btn">Clear</button>
+          </div>
+          <pre id="terminal-output"></pre>
+        </div>
+
+        <div id="terminal-tab-logs" style="display:none;margin-top:8px;">
+          <pre id="terminal-logs-output"></pre>
+        </div>
+
+        <div id="terminal-tab-errors" style="display:none;margin-top:8px;">
+          <pre id="terminal-errors-output"></pre>
+        </div>
       </section>
 
       <!-- MICROCONTROLLER -->
       <section class="panel" id="panel-microcontroller">
         <h3>Microcontroller Builder</h3>
         <textarea id="mcu-input" placeholder="Describe the ESP32/ESP8266 code you want..."></textarea>
-        <button id="mcu-run" class="btn btn-primary">Generate Firmware</button>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <input id="mcu-project" type="text" placeholder="Project name (optional)" />
+          <button id="mcu-run" class="btn btn-primary">Generate Firmware</button>
+          <button id="mcu-flash" class="btn">Flash (stub)</button>
+        </div>
         <pre id="mcu-output"></pre>
+      </section>
+
+      <!-- CAPABILITIES -->
+      <section class="panel" id="panel-capabilities">
+        <h3>Capabilities</h3>
+        <details open>
+          <summary>Core Engines</summary>
+          <ul>
+            <li>App Generator Engine (generator/orchestrator)</li>
+            <li>AI Assistant Engine (assistant.AIAgent)</li>
+            <li>File Engine (read/write/tree/move/delete)</li>
+            <li>Project Manager (create/duplicate/delete/rename)</li>
+            <li>Terminal Engine (terminal API or assistant fallback)</li>
+            <li>Microcontroller Engine (generate/flash)</li>
+            <li>Cloudflare Deploy (optional)</li>
+          </ul>
+        </details>
+        <details>
+          <summary>Planned Features</summary>
+          <ul>
+            <li>Syntax highlighting editor (Monaco/CodeMirror)</li>
+            <li>Live logs streaming</li>
+            <li>ESP toolchain integration (esptool, platformio)</li>
+            <li>Cloudflare Workers/Pages deploy UI</li>
+            <li>R2 / D1 / KV management</li>
+          </ul>
+        </details>
       </section>
 
     </aside>
@@ -80,10 +199,16 @@
     <section class="right-column">
 
       <!-- PREVIEW -->
-      <section class="panel" id="panel-preview"></section>
+      <section class="panel" id="panel-preview">
+        <h3>Preview</h3>
+        <div id="preview-root"><p class="muted">No preview loaded</p></div>
+      </section>
 
-      <!-- MAIN VIEW -->
-      <section class="panel" id="panel-main-view"></section>
+      <!-- MAIN VIEW (Editor / Chat / Details) -->
+      <section class="panel" id="panel-main-view">
+        <h3>Main View</h3>
+        <div id="main-root"><p class="muted">Editor and details will appear here</p></div>
+      </section>
 
       <!-- LOGS -->
       <section class="panel" id="panel-logs">
@@ -100,6 +225,45 @@
     </section>
   </main>
 
-  <script src="static/app.js"></script>
+  <script>
+    // Quick UI wiring for panel switch, tabs, and open MCU page
+    document.addEventListener("DOMContentLoaded", () => {
+      const panelSwitch = document.getElementById("panel-switch");
+      panelSwitch?.addEventListener("change", (e) => {
+        const id = e.target.value;
+        if (!id) return;
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        panelSwitch.value = "";
+      });
+
+      // Terminal tabs
+      const tabs = document.querySelectorAll(".tab");
+      tabs.forEach((t) => {
+        t.addEventListener("click", () => {
+          tabs.forEach(x => x.classList.remove("active"));
+          t.classList.add("active");
+          const tab = t.dataset.tab;
+          document.getElementById("terminal-tab-terminal").style.display = tab === "terminal" ? "" : "none";
+          document.getElementById("terminal-tab-logs").style.display = tab === "logs" ? "" : "none";
+          document.getElementById("terminal-tab-errors").style.display = tab === "errors" ? "" : "none";
+        });
+      });
+
+      document.getElementById("open-mcu-page")?.addEventListener("click", () => {
+        window.open("/static/microcontroller.html", "_blank");
+      });
+
+      // Theme toggle placeholder
+      document.getElementById("theme-toggle")?.addEventListener("click", () => {
+        const current = document.documentElement.getAttribute("data-theme");
+        document.documentElement.setAttribute("data-theme", current === "industrial" ? "gold" : "industrial");
+        document.getElementById("theme-toggle").textContent = `Theme: ${document.documentElement.getAttribute("data-theme")}`;
+      });
+    });
+  </script>
+
+  <script src="/static/app.js"></script>
 </body>
 </html>
