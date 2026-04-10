@@ -1,14 +1,46 @@
+// =====================================================
+// GLOBAL STATE
+// =====================================================
 let currentProjectName = null;
+let currentFilePath = null;
 
+
+// =====================================================
+// ON LOAD
+// =====================================================
 document.addEventListener("DOMContentLoaded", () => {
   setupGeneratorPanel();
   setupAssistantPanel();
+  setupTerminalPanel();
+  setupMicrocontrollerPanel();
+
+  setupProjectsPanel();
+  setupFileTreePanel();
+  setupCapabilitiesPanel();
 });
 
 
-// -----------------------------------------------------
+// =====================================================
+// UNIVERSAL API HELPER
+// =====================================================
+async function api(path, method = "GET", body = null) {
+  try {
+    const res = await fetch(path, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: body ? JSON.stringify(body) : null,
+    });
+    return await res.json();
+  } catch (err) {
+    console.error("API ERROR:", err);
+    return { success: false, error: err.message };
+  }
+}
+
+
+// =====================================================
 // GENERATOR PANEL
-// -----------------------------------------------------
+// =====================================================
 function setupGeneratorPanel() {
   const promptEl = document.getElementById("generator-input");
   const runBtn = document.getElementById("generator-run");
@@ -20,83 +52,53 @@ function setupGeneratorPanel() {
   runBtn.addEventListener("click", async () => {
     const prompt = promptEl.value.trim();
     if (!prompt) {
-      if (errorsEl) errorsEl.textContent = "Prompt is empty.";
+      errorsEl.textContent = "Prompt is empty.";
       return;
     }
 
     const projectName = "project-" + Date.now();
     currentProjectName = projectName;
 
-    if (logsEl) logsEl.textContent = "Starting generation...\n";
-    if (errorsEl) errorsEl.textContent = "";
+    logsEl.textContent = "Starting generation...\n";
+    errorsEl.textContent = "";
 
-    try {
-      const res = await fetch("/api/generator/run", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt,
-          project_name: projectName,
-          app_type: "generic",
-        }),
-      });
+    const data = await api("/api/generator/run", "POST", {
+      prompt,
+      project_name: projectName,
+      app_type: "generic",
+    });
 
-      const data = await res.json();
+    if (Array.isArray(data.logs)) {
+      logsEl.textContent = data.logs
+        .map((l) => `[${l.level.toUpperCase()}] ${l.message}`)
+        .join("\n");
+    }
 
-      if (logsEl && Array.isArray(data.logs)) {
-        logsEl.textContent = data.logs
-          .map((l) => `[${l.level.toUpperCase()}] ${l.message}`)
-          .join("\n");
-      }
+    if (Array.isArray(data.errors) && data.errors.length > 0) {
+      errorsEl.textContent = data.errors.join("\n");
+    }
 
-      if (errorsEl && Array.isArray(data.errors) && data.errors.length > 0) {
-        errorsEl.textContent = data.errors.join("\n");
-      }
-
-      if (data.success) {
-        loadPreview(projectName);
-      }
-    } catch (e) {
-      if (errorsEl) errorsEl.textContent = "Generator error: " + e.message;
+    if (data.success) {
+      loadPreview(projectName);
+      loadFileTree(projectName);
+      loadProjectsList();
     }
   });
 }
 
 
-// -----------------------------------------------------
+// =====================================================
 // AI ASSISTANT PANEL
-// -----------------------------------------------------
+// =====================================================
 function setupAssistantPanel() {
-  const mainView = document.getElementById("panel-main-view");
-  if (!mainView) return;
+  const input = document.getElementById("assistant-input");
+  const runBtn = document.getElementById("assistant-run");
+  const output = document.getElementById("assistant-output");
 
-  const container = document.createElement("div");
-  container.className = "assistant-panel";
+  if (!input || !runBtn) return;
 
-  const title = document.createElement("h3");
-  title.textContent = "AI Assistant";
-
-  const textarea = document.createElement("textarea");
-  textarea.id = "assistant-input";
-  textarea.placeholder =
-    "Tell the assistant what to do inside the current project...";
-
-  const button = document.createElement("button");
-  button.id = "assistant-run";
-  button.className = "btn btn-primary";
-  button.textContent = "Run Assistant";
-
-  const output = document.createElement("pre");
-  output.id = "assistant-output";
-
-  container.appendChild(title);
-  container.appendChild(textarea);
-  container.appendChild(button);
-  container.appendChild(output);
-  mainView.appendChild(container);
-
-  button.addEventListener("click", async () => {
-    const prompt = textarea.value.trim();
+  runBtn.addEventListener("click", async () => {
+    const prompt = input.value.trim();
     if (!prompt) {
       output.textContent = "Assistant prompt is empty.";
       return;
@@ -108,32 +110,86 @@ function setupAssistantPanel() {
 
     output.textContent = "Assistant running...\n";
 
-    try {
-      const res = await fetch("/api/assistant/run", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt,
-          project_name: currentProjectName,
-        }),
-      });
+    const data = await api("/api/assistant/run", "POST", {
+      prompt,
+      project_name: currentProjectName,
+    });
 
-      const data = await res.json();
-      output.textContent = JSON.stringify(data, null, 2);
-    } catch (e) {
-      output.textContent = "Assistant error: " + e.message;
-    }
+    output.textContent = JSON.stringify(data, null, 2);
+
+    // Refresh file tree if assistant changed files
+    loadFileTree(currentProjectName);
   });
 }
 
 
-// -----------------------------------------------------
+// =====================================================
+// TERMINAL PANEL
+// =====================================================
+function setupTerminalPanel() {
+  const input = document.getElementById("terminal-input");
+  const runBtn = document.getElementById("terminal-run");
+  const output = document.getElementById("terminal-output");
+
+  if (!input || !runBtn) return;
+
+  runBtn.addEventListener("click", async () => {
+    const command = input.value.trim();
+    if (!command) {
+      output.textContent = "Command is empty.";
+      return;
+    }
+    if (!currentProjectName) {
+      output.textContent = "No project selected.";
+      return;
+    }
+
+    output.textContent = "Running command...\n";
+
+    const data = await api("/api/assistant/run", "POST", {
+      prompt: `run command: ${command}`,
+      project_name: currentProjectName,
+    });
+
+    output.textContent = JSON.stringify(data, null, 2);
+  });
+}
+
+
+// =====================================================
+// MICROCONTROLLER PANEL
+// =====================================================
+function setupMicrocontrollerPanel() {
+  const input = document.getElementById("mcu-input");
+  const runBtn = document.getElementById("mcu-run");
+  const output = document.getElementById("mcu-output");
+
+  if (!input || !runBtn) return;
+
+  runBtn.addEventListener("click", async () => {
+    const prompt = input.value.trim();
+    if (!prompt) {
+      output.textContent = "Microcontroller prompt is empty.";
+      return;
+    }
+
+    output.textContent = "Generating firmware...\n";
+
+    const data = await api("/api/assistant/run", "POST", {
+      prompt: `microcontroller: ${prompt}`,
+      project_name: currentProjectName,
+    });
+
+    output.textContent = JSON.stringify(data, null, 2);
+  });
+}
+
+
+// =====================================================
 // PREVIEW PANEL
-// -----------------------------------------------------
+// =====================================================
 function loadPreview(projectName) {
   const previewPanel = document.getElementById("panel-preview");
-  if (!previewPanel) return;
-
   previewPanel.innerHTML = "";
 
   const iframe = document.createElement("iframe");
@@ -142,8 +198,54 @@ function loadPreview(projectName) {
 
   iframe.addEventListener("error", () => {
     const errorsEl = document.getElementById("errors-output");
-    if (errorsEl) errorsEl.textContent = "Preview failed to load.";
+    errorsEl.textContent = "Preview failed to load.";
   });
 
   previewPanel.appendChild(iframe);
+}
+
+
+// =====================================================
+// PROJECTS PANEL (placeholder)
+// =====================================================
+function setupProjectsPanel() {
+  loadProjectsList();
+}
+
+function loadProjectsList() {
+  const panel = document.getElementById("panel-projects");
+  panel.innerHTML = "<h3>Projects</h3><p>Coming soon...</p>";
+}
+
+
+// =====================================================
+// FILE TREE PANEL (placeholder)
+// =====================================================
+function setupFileTreePanel() {
+  loadFileTree();
+}
+
+function loadFileTree() {
+  const panel = document.getElementById("panel-filetree");
+  panel.innerHTML = "<h3>File Tree</h3><p>Coming soon...</p>";
+}
+
+
+// =====================================================
+// CAPABILITIES PANEL (placeholder)
+// =====================================================
+function setupCapabilitiesPanel() {
+  const panel = document.getElementById("panel-capabilities");
+  panel.innerHTML = `
+    <h3>Capabilities</h3>
+    <ul>
+      <li>App Generator Engine</li>
+      <li>AI Assistant Engine</li>
+      <li>Terminal Engine</li>
+      <li>Microcontroller Engine</li>
+      <li>File Engine</li>
+      <li>Cloudflare Engine</li>
+      <li>Project Manager Engine</li>
+    </ul>
+  `;
 }
