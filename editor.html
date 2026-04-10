@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html data-theme="industrial">
+<head>
+  <meta charset="UTF-8" />
+  <title>Boardwalk Playground · Editor</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body class="layout-page">
+  <header class="topbar">
+    <div class="topbar-left">
+      <img src="/static/logo.png" class="logo" />
+      <span class="app-title">Boardwalk Playground · Editor</span>
+    </div>
+    <div class="topbar-right">
+      <a href="/" class="btn btn-ghost">Back to Dashboard</a>
+      <button id="theme-toggle" class="btn btn-ghost">Theme: Industrial</button>
+    </div>
+  </header>
+
+  <main class="page-main">
+    <section class="panel">
+      <h2>Editor</h2>
+      <div class="editor-meta">
+        <label>Project:
+          <input id="editor-project" placeholder="project-name" />
+        </label>
+        <label>Path:
+          <input id="editor-path" placeholder="src/index.js" />
+        </label>
+        <button id="editor-load" class="btn btn-primary">Load</button>
+        <button id="editor-save" class="btn btn-primary">Save</button>
+      </div>
+      <textarea id="editor-text"></textarea>
+    </section>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
