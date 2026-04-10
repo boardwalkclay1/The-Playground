@@ -17,6 +17,8 @@
   </header>
 
   <main class="main-grid">
+
+    <!-- LEFT COLUMN -->
     <aside class="left-column">
       <section class="panel" id="panel-projects"></section>
       <section class="panel" id="panel-filetree"></section>
@@ -24,11 +26,36 @@
       <section class="panel" id="panel-cloudflare"></section>
       <section class="panel" id="panel-rundeploy"></section>
       <section class="panel" id="panel-capabilities"></section>
+
+      <!-- NEW: PROMPT PANEL -->
+      <section class="panel" id="panel-generator">
+        <h3>App Generator</h3>
+        <textarea id="generator-input" placeholder="Describe the app you want to build..."></textarea>
+        <button id="generator-run" class="btn btn-primary">Generate App</button>
+      </section>
     </aside>
 
+    <!-- RIGHT COLUMN -->
     <section class="right-column">
+
+      <!-- PREVIEW PANEL -->
       <section class="panel" id="panel-preview"></section>
+
+      <!-- MAIN VIEW PANEL -->
       <section class="panel" id="panel-main-view"></section>
+
+      <!-- NEW: LOGS PANEL -->
+      <section class="panel" id="panel-logs">
+        <h3>Build & System Logs</h3>
+        <pre id="logs-output"></pre>
+      </section>
+
+      <!-- NEW: ERROR PANEL -->
+      <section class="panel" id="panel-errors">
+        <h3>Preview & Runtime Errors</h3>
+        <pre id="errors-output"></pre>
+      </section>
+
     </section>
   </main>
 
