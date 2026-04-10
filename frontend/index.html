@@ -1,64 +1,42 @@
 <!DOCTYPE html>
-<html data-theme="industrial">
-<head>
-  <meta charset="UTF-8" />
-  <title>Boardwalk Playground</title>
-  <link rel="stylesheet" href="static/style.css" />
-</head>
-<body class="layout-two-column">
-  <header class="topbar">
-    <div class="topbar-left">
-      <img src="/static/logo.png" class="logo" />
-      <span class="app-title">Boardwalk Playground</span>
-    </div>
-    <div class="topbar-right">
-      <button id="theme-toggle" class="btn btn-ghost">Theme: Industrial</button>
-    </div>
-  </header>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Boardwalk Studio</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <main class="main-grid">
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <meta name="theme-color" content="#f5d36b" />
 
-    <!-- LEFT COLUMN -->
-    <aside class="left-column">
-      <section class="panel" id="panel-projects"></section>
-      <section class="panel" id="panel-filetree"></section>
-      <section class="panel" id="panel-plugins"></section>
-      <section class="panel" id="panel-cloudflare"></section>
-      <section class="panel" id="panel-rundeploy"></section>
-      <section class="panel" id="panel-capabilities"></section>
+    <link rel="stylesheet" href="./bw-studio.css" />
 
-      <!-- NEW: PROMPT PANEL -->
-      <section class="panel" id="panel-generator">
-        <h3>App Generator</h3>
-        <textarea id="generator-input" placeholder="Describe the app you want to build..."></textarea>
-        <button id="generator-run" class="btn btn-primary">Generate App</button>
-      </section>
-    </aside>
+    <!-- React (UMD) -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
 
-    <!-- RIGHT COLUMN -->
-    <section class="right-column">
+    <!-- Babel for JSX + ES imports -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-      <!-- PREVIEW PANEL -->
-      <section class="panel" id="panel-preview"></section>
+    <!-- Your app (same folder as index.html) -->
+    <script type="text/babel" src="./app.js"></script>
 
-      <!-- MAIN VIEW PANEL -->
-      <section class="panel" id="panel-main-view"></section>
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker.register("./service-worker.js");
+        });
+      }
+    </script>
+  </head>
 
-      <!-- NEW: LOGS PANEL -->
-      <section class="panel" id="panel-logs">
-        <h3>Build & System Logs</h3>
-        <pre id="logs-output"></pre>
-      </section>
+  <body class="theme-gold">
+    <!-- Main Studio UI (App Generator, Editor, etc.) -->
+    <div id="root"></div>
 
-      <!-- NEW: ERROR PANEL -->
-      <section class="panel" id="panel-errors">
-        <h3>Preview & Runtime Errors</h3>
-        <pre id="errors-output"></pre>
-      </section>
+    <!-- AI Operator Panel (separate engine, wired in app.js) -->
+    <div id="ai-console-root"></div>
 
-    </section>
-  </main>
-
-  <script src="static/app.js"></script>
-</body>
+    <!-- Command Terminal Panel (separate engine, wired in app.js) -->
+    <div id="terminal-root"></div>
+  </body>
 </html>
