@@ -4,13 +4,43 @@
   <meta charset="UTF-8" />
   <title>Boardwalk Playground · Capabilities</title>
   <link rel="stylesheet" href="/static/style.css" />
+  <style>
+    .dropdown {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 10px;
+      background: var(--bg-panel);
+      cursor: pointer;
+      padding: 10px 12px;
+    }
+    .dropdown-title {
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--accent);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .dropdown-content {
+      display: none;
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--text);
+      line-height: 1.5em;
+    }
+    .dropdown.open .dropdown-content {
+      display: block;
+    }
+  </style>
 </head>
+
 <body class="layout-page">
   <header class="topbar">
     <div class="topbar-left">
       <img src="/static/logo.png" class="logo" />
       <span class="app-title">Boardwalk Playground · Capabilities</span>
     </div>
+
     <div class="topbar-right">
       <a href="/" class="btn btn-ghost">Back to Dashboard</a>
       <button id="theme-toggle" class="btn btn-ghost">Theme: Industrial</button>
@@ -20,10 +50,127 @@
   <main class="page-main">
     <section class="panel">
       <h2>Capabilities</h2>
-      <div id="capabilities-list"></div>
+
+      <!-- PROJECT ENGINE -->
+      <div class="dropdown">
+        <div class="dropdown-title">Project Workspace Engine <span>▼</span></div>
+        <div class="dropdown-content">
+          Create and switch between multiple projects.  
+          The dashboard reads your project folders and lets you pick one.  
+          Everything you do—editing, deploying, running—happens inside the selected project.
+        </div>
+      </div>
+
+      <!-- FILE SYSTEM -->
+      <div class="dropdown">
+        <div class="dropdown-title">File System Access <span>▼</span></div>
+        <div class="dropdown-content">
+          Use the FileTree panel to browse your project.  
+          Click any file to open it in the inline editor.  
+          Save changes instantly.  
+          For deep work, open the full Editor page.
+        </div>
+      </div>
+
+      <!-- INLINE EDITOR -->
+      <div class="dropdown">
+        <div class="dropdown-title">Inline Dashboard Editor <span>▼</span></div>
+        <div class="dropdown-content">
+          When you click a file in the FileTree, it opens in the right column.  
+          Edit it directly and hit Save.  
+          This is perfect for quick fixes and small edits.
+        </div>
+      </div>
+
+      <!-- FULL EDITOR -->
+      <div class="dropdown">
+        <div class="dropdown-title">Full Editor Page <span>▼</span></div>
+        <div class="dropdown-content">
+          Go to /editor for a full-screen editing environment.  
+          Load any file by typing its path.  
+          Save instantly.  
+          This is your deep-work zone.
+        </div>
+      </div>
+
+      <!-- CLOUDFLARE SUITE -->
+      <div class="dropdown">
+        <div class="dropdown-title">Cloudflare Suite <span>▼</span></div>
+        <div class="dropdown-content">
+          Deploy Workers, Pages, D1, R2, KV, and Queues.  
+          Use the quick panel for fast actions or open the full Cloudflare page for detailed control.  
+          Logs appear instantly so you can see what happened.
+        </div>
+      </div>
+
+      <!-- GITHUB -->
+      <div class="dropdown">
+        <div class="dropdown-title">GitHub Integration <span>▼</span></div>
+        <div class="dropdown-content">
+          Clone any GitHub repo into a project.  
+          The backend handles the clone and logs the events.  
+          After cloning, the project appears in your Project Switcher.
+        </div>
+      </div>
+
+      <!-- RUN / DEPLOY -->
+      <div class="dropdown">
+        <div class="dropdown-title">Run / Deploy Engine <span>▼</span></div>
+        <div class="dropdown-content">
+          Start backend or frontend processes for your project.  
+          Use the quick panel for instant runs.  
+          Logs appear in the main view so you can see what’s happening.
+        </div>
+      </div>
+
+      <!-- PLUGINS -->
+      <div class="dropdown">
+        <div class="dropdown-title">Plugin System <span>▼</span></div>
+        <div class="dropdown-content">
+          Add custom tools, modules, and UI panels.  
+          Plugins can extend the dashboard, add pages, or add backend logic.  
+          This is how the Playground grows with you.
+        </div>
+      </div>
+
+      <!-- PREVIEW -->
+      <div class="dropdown">
+        <div class="dropdown-title">Preview Panel <span>▼</span></div>
+        <div class="dropdown-content">
+          The iframe on the dashboard can load any local app or generated output.  
+          Perfect for testing UI, static sites, or generated pages.
+        </div>
+      </div>
+
+      <!-- LOGS -->
+      <div class="dropdown">
+        <div class="dropdown-title">Logs & Diagnostics <span>▼</span></div>
+        <div class="dropdown-content">
+          View system logs, deployment logs, and builder events.  
+          The Logs page shows everything the backend reports.
+        </div>
+      </div>
+
+      <!-- THEMES -->
+      <div class="dropdown">
+        <div class="dropdown-title">Theme Engine <span>▼</span></div>
+        <div class="dropdown-content">
+          Switch between Industrial and Neon Hacker themes instantly.  
+          The entire UI updates without reloading the page.
+        </div>
+      </div>
+
     </section>
   </main>
 
   <script src="/static/app.js"></script>
+
+  <script>
+    document.querySelectorAll(".dropdown").forEach(drop => {
+      drop.addEventListener("click", () => {
+        drop.classList.toggle("open");
+      });
+    });
+  </script>
 </body>
 </html>
