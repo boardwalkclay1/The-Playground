@@ -6,6 +6,7 @@ Improvements:
 - Robust intent detection using keyword and pattern matching
 - Safer routing to AssistantActions, FileTools, RunTools, DebugTools
 - Support for structured commands (JSON payloads) and natural language
+- Full support for Python tools, Git clone, Repo Analyzer, Repo UI, USB tools
 - Clear, consistent return payloads with action, success, and details
 - Basic rate-limiting / debounce placeholder (to avoid accidental repeated runs)
 - Logging hooks via DebugTools when available
@@ -48,13 +49,9 @@ class AIAgent:
             if hasattr(self.debugger, "log"):
                 self.debugger.log(*args, **kwargs)
         except Exception:
-            # never raise from logging
             pass
 
     def _debounce(self, key: str) -> bool:
-        """
-        Return True if the action should be allowed; False if it's a duplicate within debounce window.
-        """
         now = _now_ts()
         last = _RECENT_RUNS.get(key)
         if last and (now - last) < _DEBOUNCE_SECONDS:
@@ -64,192 +61,255 @@ class AIAgent:
 
     def _parse_structured(self, prompt: str) -> Optional[Dict[str, Any]]:
         """
-        If the prompt contains a JSON block or a structured command, parse and return it.
-        Accepts:
-          - JSON object anywhere in the prompt
-          - Lines like "command: { ... }"
+        Detect JSON payloads inside the prompt.
         """
-        # try to find a JSON object in the prompt
         try:
             m = re.search(r"(\{[\s\S]*\})", prompt)
             if m:
-                payload = json.loads(m.group(1))
-                return payload
+                return json.loads(m.group(1))
         except Exception:
             pass
 
-        # try "command: <json>" style
         try:
             m = re.search(r"command\s*:\s*(\{[\s\S]*\})", prompt, flags=re.IGNORECASE)
             if m:
-                payload = json.loads(m.group(1))
-                return payload
+                return json.loads(m.group(1))
         except Exception:
             pass
 
         return None
 
+    # =====================================================================
+    # MAIN ENTRYPOINT
+    # =====================================================================
+
     def run(self, prompt: str, project_path: str) -> Dict[str, Any]:
-        """
-        Main entrypoint. Inspects the prompt and routes to the appropriate action.
-        Returns a structured dict with at least 'success' and 'action' keys.
-        """
         prompt_text = (prompt or "").strip()
         key = f"{project_path}:{prompt_text}"
+
         if not self._debounce(key):
             return {"success": False, "action": "debounced", "message": "Duplicate request suppressed"}
 
         self._log_debug("agent.run", {"prompt": prompt_text, "project": project_path})
 
-        # Try structured payload first
+        # ============================================================
+        # 1. STRUCTURED JSON COMMANDS
+        # ============================================================
         structured = self._parse_structured(prompt_text)
         if isinstance(structured, dict):
-            # Expect keys like {"action": "create_file", "path": "...", "content": "..."}
             action = structured.get("action")
+
             try:
+                # ---------------- FILE OPS ----------------
                 if action == "create_file":
-                    return self.actions.create_file(structured.get("path", ""), project_path, content=structured.get("content", ""), overwrite=structured.get("overwrite", False))
+                    return self.actions.create_file(
+                        structured.get("path", ""),
+                        project_path,
+                        content=structured.get("content", ""),
+                        overwrite=structured.get("overwrite", False),
+                    )
+
                 if action == "edit_file":
-                    # support direct content param or unified "patch"
-                    if "content" in structured and "path" in structured:
-                        # atomic write
-                        return self.actions.create_file(structured.get("path", ""), project_path, content=structured.get("content", ""), overwrite=True)
+                    if "content" in structured:
+                        return self.actions.edit_file(
+                            f"edit file {structured.get('path')}: {structured.get('content')}",
+                            project_path,
+                            create_backup=structured.get("create_backup", True),
+                        )
                     if "patch" in structured:
-                        return self.actions.apply_patch(structured.get("patch", ""), project_path, create_backup=structured.get("create_backup", True))
+                        return self.actions.apply_patch(
+                            structured.get("patch", ""),
+                            project_path,
+                            create_backup=structured.get("create_backup", True),
+                        )
+
                 if action == "delete":
-                    return self.actions.delete_file(structured.get("path", ""), project_path, allow_recursive=structured.get("recursive", False))
+                    return self.actions.delete_file(
+                        structured.get("path", ""),
+                        project_path,
+                        allow_recursive=structured.get("recursive", False),
+                    )
+
                 if action == "move":
                     src = structured.get("src")
                     dst = structured.get("dst")
                     if src and dst:
-                        return self.actions.move_file(f"move file {src} to {dst}", project_path, overwrite=structured.get("overwrite", False))
+                        return self.actions.move_file(
+                            f"move file {src} to {dst}",
+                            project_path,
+                            overwrite=structured.get("overwrite", False),
+                        )
+
                 if action == "list_files":
                     return self.actions.list_files(project_path, glob=structured.get("glob", "**/*"))
+
+                # ---------------- PYTHON ----------------
+                if action == "python_explain":
+                    return self.actions.python_explain(structured.get("path", ""), project_path)
+
+                if action == "python_generate":
+                    return self.actions.python_generate(
+                        project_path,
+                        structured.get("path", ""),
+                        structured.get("description", ""),
+                    )
+
+                if action == "python_run":
+                    return self.actions.python_run(structured.get("path", ""), project_path)
+
+                # ---------------- GIT ----------------
+                if action == "git_clone":
+                    return self.actions.git_clone(
+                        project_path,
+                        structured.get("git_url", ""),
+                        structured.get("folder_name", ""),
+                    )
+
+                # ---------------- REPO ANALYZER ----------------
+                if action == "analyze_repo":
+                    return self.actions.analyze_repo(
+                        project_path,
+                        structured.get("folder", ""),
+                    )
+
+                if action == "build_repo_ui":
+                    return self.actions.build_repo_ui(
+                        project_path,
+                        structured.get("folder", ""),
+                    )
+
+                # ---------------- USB ----------------
+                if action == "usb_list":
+                    return self.actions.usb_list()
+
+                if action == "usb_export":
+                    return self.actions.usb_export(
+                        project_path,
+                        structured.get("folder", ""),
+                        structured.get("usb_path", ""),
+                    )
+
+                # ---------------- RUN COMMAND ----------------
                 if action == "run":
                     cmd = structured.get("command")
                     if cmd:
-                        # delegate to RunTools if it exposes a run method
-                        try:
-                            if hasattr(self.runner, "run_command"):
-                                return self.runner.run_command(cmd, project_path)
-                            if hasattr(self.runner, "run"):
-                                return self.runner.run(cmd, project_path)
-                        except Exception as e:
-                            return {"success": False, "error": f"Runner error: {e}"}
-                # unknown structured action
+                        if hasattr(self.runner, "run_command"):
+                            return self.runner.run_command(cmd, project_path)
+                        if hasattr(self.runner, "run"):
+                            return self.runner.run(cmd, project_path)
+
                 return {"success": False, "action": "unknown_structured", "message": f"Unknown structured action: {action}"}
+
             except Exception as e:
                 return {"success": False, "action": "structured_error", "error": str(e)}
 
-        # Lowercase prompt for keyword matching
+        # ============================================================
+        # 2. NATURAL LANGUAGE INTENT ROUTING
+        # ============================================================
         pl = prompt_text.lower()
 
-        # File operations
+        # ---------------- FILE OPS ----------------
         if re.search(r"\b(create file|new file)\b", pl):
-            try:
-                return self.actions.create_file(prompt_text, project_path)
-            except Exception as e:
-                return {"success": False, "action": "create_file", "error": str(e)}
+            return self.actions.create_file(prompt_text, project_path)
 
         if re.search(r"\b(edit file|edit|change)\b", pl):
-            try:
-                return self.actions.edit_file(prompt_text, project_path)
-            except Exception as e:
-                return {"success": False, "action": "edit_file", "error": str(e)}
+            return self.actions.edit_file(prompt_text, project_path)
 
         if re.search(r"\b(delete|remove)\b", pl):
-            try:
-                return self.actions.delete_file(prompt_text, project_path)
-            except Exception as e:
-                return {"success": False, "action": "delete_file", "error": str(e)}
+            return self.actions.delete_file(prompt_text, project_path)
 
         if re.search(r"\b(move file|move)\b", pl):
-            try:
-                return self.actions.move_file(prompt_text, project_path)
-            except Exception as e:
-                return {"success": False, "action": "move_file", "error": str(e)}
+            return self.actions.move_file(prompt_text, project_path)
 
-        # Patch proposals
-        if re.search(r"\b(patch|diff|unified diff|apply patch|propose patch)\b", pl):
-            # if user provided a patch in the prompt, extract and propose
+        # ---------------- PYTHON ----------------
+        if re.search(r"\b(python explain|explain python)\b", pl):
+            m = re.search(r"python explain\s+([^\s]+)", pl)
+            if m:
+                return self.actions.python_explain(m.group(1), project_path)
+
+        if re.search(r"\b(generate python|new python file)\b", pl):
+            m = re.search(r"(?:generate python|new python file)\s+([^\s]+)", pl)
+            if m:
+                return self.actions.python_generate(project_path, m.group(1), "Generated via natural language")
+
+        if re.search(r"\b(run python|python run)\b", pl):
+            m = re.search(r"(?:run python|python run)\s+([^\s]+)", pl)
+            if m:
+                return self.actions.python_run(m.group(1), project_path)
+
+        # ---------------- GIT ----------------
+        if re.search(r"\b(clone repo|git clone)\b", pl):
+            m = re.search(r"(?:git clone|clone repo)\s+([^\s]+)", pl)
+            if m:
+                git_url = m.group(1)
+                folder = git_url.rstrip("/").split("/")[-1].replace(".git", "")
+                return self.actions.git_clone(project_path, git_url, folder)
+
+        # ---------------- REPO ANALYZER ----------------
+        if re.search(r"\b(analyze repo|scan repo|repo info)\b", pl):
+            m = re.search(r"(?:analyze repo|scan repo|repo info)\s+([^\s]+)", pl)
+            if m:
+                return self.actions.analyze_repo(project_path, m.group(1))
+
+        if re.search(r"\b(build repo ui|repo ui)\b", pl):
+            m = re.search(r"(?:build repo ui|repo ui)\s+([^\s]+)", pl)
+            if m:
+                return self.actions.build_repo_ui(project_path, m.group(1))
+
+        # ---------------- USB ----------------
+        if re.search(r"\b(list usb|usb list)\b", pl):
+            return self.actions.usb_list()
+
+        if re.search(r"\b(export to usb|usb export)\b", pl):
+            m = re.search(r"(?:usb export|export to usb)\s+([^\s]+)\s+to\s+([^\s]+)", pl)
+            if m:
+                folder = m.group(1)
+                usb_path = m.group(2)
+                return self.actions.usb_export(project_path, folder, usb_path)
+
+        # ---------------- PATCH ----------------
+        if re.search(r"\b(patch|diff|apply patch|propose patch)\b", pl):
             patch_match = re.search(r"(?s)(^|\n)(--- .+?)(\n|$)", prompt_text)
             if patch_match:
-                patch_text = patch_match.group(2)
-                return self.actions.propose_patch(patch_text, project_path)
+                return self.actions.propose_patch(patch_match.group(2), project_path)
             return {"success": False, "action": "propose_patch", "message": "No patch found in prompt"}
 
-        # Running commands (delegates to RunTools)
-        if re.search(r"\b(run backend|start backend|run server|start server)\b", pl):
-            try:
-                if hasattr(self.runner, "run_backend"):
-                    return self.runner.run_backend(project_path)
-                if hasattr(self.runner, "run"):
-                    return self.runner.run("backend", project_path)
-                return {"success": False, "action": "run_backend", "error": "Runner does not support run_backend"}
-            except Exception as e:
-                return {"success": False, "action": "run_backend", "error": str(e)}
+        # ---------------- RUNNERS ----------------
+        if re.search(r"\b(run backend|start backend)\b", pl):
+            if hasattr(self.runner, "run_backend"):
+                return self.runner.run_backend(project_path)
+            if hasattr(self.runner, "run"):
+                return self.runner.run("backend", project_path)
 
-        if re.search(r"\b(run frontend|start frontend|serve frontend)\b", pl):
-            try:
-                if hasattr(self.runner, "run_frontend"):
-                    return self.runner.run_frontend(project_path)
-                if hasattr(self.runner, "run"):
-                    return self.runner.run("frontend", project_path)
-                return {"success": False, "action": "run_frontend", "error": "Runner does not support run_frontend"}
-            except Exception as e:
-                return {"success": False, "action": "run_frontend", "error": str(e)}
+        if re.search(r"\b(run frontend|start frontend)\b", pl):
+            if hasattr(self.runner, "run_frontend"):
+                return self.runner.run_frontend(project_path)
+            if hasattr(self.runner, "run"):
+                return self.runner.run("frontend", project_path)
 
-        if re.search(r"\b(run worker|deploy worker|start worker)\b", pl):
-            try:
-                if hasattr(self.runner, "run_worker"):
-                    return self.runner.run_worker(project_path)
-                if hasattr(self.runner, "run"):
-                    return self.runner.run("worker", project_path)
-                return {"success": False, "action": "run_worker", "error": "Runner does not support run_worker"}
-            except Exception as e:
-                return {"success": False, "action": "run_worker", "error": str(e)}
+        if re.search(r"\b(run worker|start worker)\b", pl):
+            if hasattr(self.runner, "run_worker"):
+                return self.runner.run_worker(project_path)
+            if hasattr(self.runner, "run"):
+                return self.runner.run("worker", project_path)
 
-        # Microcontroller / firmware generation
-        if re.search(r"\b(microcontroller|firmware|generate firmware|arduino|esp32|mcu)\b", pl):
-            # delegate to assistant actions if a generate_firmware action exists
-            try:
-                if hasattr(self.actions, "generate_firmware"):
-                    return self.actions.generate_firmware(prompt_text, project_path)
-                # fallback: create a stub main.ino
-                created = self.actions.create_file("main.ino", project_path, content="// firmware stub\n", overwrite=False)
-                return {"success": True, "action": "firmware_stub", "result": created}
-            except Exception as e:
-                return {"success": False, "action": "firmware", "error": str(e)}
-
-        # Debugging and fixing
+        # ---------------- DEBUG ----------------
         if re.search(r"\b(fix|bug|error|traceback|exception|crash)\b", pl):
-            try:
-                if hasattr(self.debugger, "debug_project"):
-                    return self.debugger.debug_project(prompt_text, project_path)
-                return {"success": False, "action": "debug", "message": "Debugger not available"}
-            except Exception as e:
-                return {"success": False, "action": "debug", "error": str(e)}
+            if hasattr(self.debugger, "debug_project"):
+                return self.debugger.debug_project(prompt_text, project_path)
 
-        # File listing / reading
-        if re.search(r"\b(list files|show files|ls project|what files)\b", pl):
-            try:
-                return self.actions.list_files(project_path)
-            except Exception as e:
-                return {"success": False, "action": "list_files", "error": str(e)}
+        # ---------------- FILE LISTING ----------------
+        if re.search(r"\b(list files|show files|ls project)\b", pl):
+            return self.actions.list_files(project_path)
 
         if re.search(r"\b(read file|show file|cat )\b", pl):
-            # attempt to extract filename
             m = re.search(r"(?:read file|show file|cat)\s+([^\n\r]+)", prompt_text, flags=re.IGNORECASE)
             if m:
-                filename = m.group(1).strip()
-                try:
-                    return self.actions.read_file(filename, project_path)
-                except Exception as e:
-                    return {"success": False, "action": "read_file", "error": str(e)}
+                return self.actions.read_file(m.group(1).strip(), project_path)
 
-        # If nothing matched, return a helpful fallback
+        # ---------------- FALLBACK ----------------
         return {
             "success": True,
             "action": "none",
-            "message": "No actionable command detected. Try: 'create file <path>', 'edit file <path>: <content>', 'run backend', or provide a structured JSON command."
+            "message": "No actionable command detected."
         }
