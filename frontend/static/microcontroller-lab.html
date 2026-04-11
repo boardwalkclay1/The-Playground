@@ -38,14 +38,62 @@
 
       <!-- LEFT PANEL -->
       <section class="panel left-panel">
+
+        <!-- COMPONENT PALETTE -->
         <h3>Components</h3>
         <div id="component-palette" class="palette"></div>
 
-        <h3 style="margin-top:20px;">AI Wiring Assistant</h3>
-        <textarea id="ai-wiring-input" placeholder="Describe wiring or paste code"></textarea>
-        <button id="ai-wiring-run" class="btn full">Generate Wiring</button>
-        <button id="ai-wiring-from-code" class="btn full">Wiring From Code</button>
-        <button id="ai-code-from-wiring" class="btn full">Code From Wiring</button>
+        <!-- AI PANEL PRO -->
+        <h3 style="margin-top:20px;">AI Lab Assistant</h3>
+
+        <!-- MODE TABS -->
+        <div class="ai-mode-tabs">
+          <button class="ai-tab active" data-mode="wiring">Wiring</button>
+          <button class="ai-tab" data-mode="code">Code</button>
+          <button class="ai-tab" data-mode="image">Image</button>
+        </div>
+
+        <!-- MEMORY / SESSION -->
+        <div class="ai-memory-bar">
+          <input id="ai-session-id" placeholder="Session / Project ID" />
+          <button id="ai-new-session" class="btn">New</button>
+        </div>
+
+        <!-- PROMPT -->
+        <textarea id="ai-prompt" class="ai-prompt"
+          placeholder="Describe wiring, code, or the image you want. Long prompts welcome."></textarea>
+
+        <!-- IMAGE CONTROLS -->
+        <div id="ai-image-controls" class="ai-image-controls">
+          <select id="ai-image-style" class="bubble">
+            <option value="photorealistic">Photorealistic</option>
+            <option value="blueprint">Blueprint / Schematic</option>
+            <option value="anime">Anime</option>
+            <option value="pixar">Pixar / 3D</option>
+            <option value="cyberpunk">Cyberpunk</option>
+            <option value="watercolor">Watercolor</option>
+            <option value="oil-painting">Oil Painting</option>
+            <option value="technical">Technical Drawing</option>
+          </select>
+
+          <select id="ai-image-res" class="bubble">
+            <option value="768x768">768×768</option>
+            <option value="1024x1024" selected>1024×1024</option>
+            <option value="1536x1536">1536×1536</option>
+          </select>
+        </div>
+
+        <!-- RUN BUTTON -->
+        <button id="ai-run" class="btn full primary">Run AI</button>
+
+        <!-- AI OUTPUT -->
+        <h3 style="margin-top:16px;">AI Output</h3>
+        <pre id="ai-output" class="ai-output"></pre>
+
+        <!-- IMAGE RESULT -->
+        <h3>Generated Image</h3>
+        <div id="ai-image-result" class="ai-image-result"></div>
+
       </section>
 
       <!-- CENTER PANEL -->
@@ -66,9 +114,6 @@
 
         <h3>Simulation</h3>
         <div id="sim-output" class="sim-output"></div>
-
-        <h3>AI Output</h3>
-        <pre id="ai-output" class="ai-output"></pre>
       </section>
 
     </main>
