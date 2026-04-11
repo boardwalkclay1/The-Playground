@@ -1,18 +1,18 @@
 # backend/main.py
 """
-Unified FastAPI Application
----------------------------
+Unified FastAPI Application (Upgraded)
+--------------------------------------
 
-This app integrates:
-- Universal Generator
-- Assistant (project-aware, policy-driven)
+Integrates:
+- Universal Generator (fused planner)
+- Assistant (project-optional, fused intelligence)
 - File operations
 - Terminal operations
 - Project manager
 - Cloudflare ops
 - GitHub ops
-- MCU router (optional)
-- AI Panel Pro
+- MCU router
+- AI Panel Pro (fused wiring/code/image)
 """
 
 from pathlib import Path
@@ -23,9 +23,10 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 import uuid
 
-# Core modules
+# Core backend modules
 from generator.orchestrator import run_universal_generator
 from assistant.assistant_api import router as assistant_router
+from assistant.ai_panel_api import router as ai_panel_router   # <-- NEW fused AI Panel
 
 # Optional modules
 try:
@@ -74,8 +75,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Static files served by frontend server (5173)
-
 
 # ============================================================
 # MODELS
@@ -121,32 +120,6 @@ class TerminalRequest(BaseModel):
     command: str
 
 
-class AIPanelRequest(BaseModel):
-    prompt: str
-    session_id: str
-
-
-class AIPanelImageRequest(AIPanelRequest):
-    style: str
-    resolution: str
-
-
-# ============================================================
-# IN-MEMORY CONVERSATION STORE
-# ============================================================
-
-CONVERSATIONS: Dict[str, List[Dict[str, str]]] = {}
-
-
-def get_history(session_id: str) -> List[Dict[str, str]]:
-    return CONVERSATIONS.get(session_id, [])
-
-
-def append_history(session_id: str, role: str, content: str) -> None:
-    CONVERSATIONS.setdefault(session_id, []).append({"role": role, "content": content})
-    CONVERSATIONS[session_id] = CONVERSATIONS[session_id][-30:]
-
-
 # ============================================================
 # GENERATOR
 # ============================================================
@@ -168,10 +141,17 @@ def api_generator_run(req: GeneratorRequest):
 
 
 # ============================================================
-# ASSISTANT ROUTER
+# ASSISTANT (FUSED)
 # ============================================================
 
 app.include_router(assistant_router, prefix="/api")
+
+
+# ============================================================
+# AI PANEL PRO (FUSED)
+# ============================================================
+
+app.include_router(ai_panel_router, prefix="/api")
 
 
 # ============================================================
@@ -251,44 +231,8 @@ if terminal_router:
 
 
 # ============================================================
-# MCU ROUTER (FIXED)
+# MCU ROUTER
 # ============================================================
 
 if mcu_router:
-    # router already has prefix="/mcu"
     app.include_router(mcu_router)
-
-
-# ============================================================
-# AI PANEL PRO
-# ============================================================
-
-@app.post("/ai/wiring")
-def ai_wiring(req: AIPanelRequest):
-    append_history(req.session_id, "user", f"[WIRING] {req.prompt}")
-    text = "[WIRING RESPONSE HERE]"
-    append_history(req.session_id, "assistant", text)
-    return {"text": text}
-
-
-@app.post("/ai/code")
-def ai_code(req: AIPanelRequest):
-    append_history(req.session_id, "user", f"[CODE] {req.prompt}")
-    text = "[CODE RESPONSE HERE]"
-    append_history(req.session_id, "assistant", text)
-    return {"text": text}
-
-
-@app.post("/ai/image")
-def ai_image(req: AIPanelImageRequest):
-    append_history(
-        req.session_id,
-        "user",
-        f"[IMAGE] {req.prompt} | style={req.style} | res={req.resolution}",
-    )
-
-    image_url = f"/static/generated/{uuid.uuid4()}.png"
-    desc = f"Generated image in style '{req.style}' at {req.resolution}."
-
-    append_history(req.session_id, "assistant", desc)
-    return {"image_url": image_url, "description": desc}
