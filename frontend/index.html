@@ -57,7 +57,7 @@
         <div class="pg-dock-tabs">
           <button class="pg-dock-tab active" data-dock="terminal">Terminal</button>
           <button class="pg-dock-tab" data-dock="errors">Errors</button>
-          <button class="pg-dock-tab" data-dock="ai">AI Assistant</button>
+          <button class="pg-dock-tab" data-dock="logs">Logs</button>
         </div>
 
         <!-- DOCK PANELS -->
@@ -78,13 +78,9 @@
             <div class="pg-errors-output" id="errors-output"></div>
           </div>
 
-          <!-- AI -->
-          <div class="pg-dock-panel hidden" id="dock-ai">
-            <div class="pg-ai-output" id="ai-output"></div>
-            <div class="pg-ai-input-row">
-              <textarea id="ai-input" class="pg-ai-input" placeholder="Ask your AI assistant..."></textarea>
-              <button id="ai-send" class="pg-btn-primary">Send</button>
-            </div>
+          <!-- LOGS -->
+          <div class="pg-dock-panel hidden" id="dock-logs">
+            <div class="pg-terminal-output" id="logs-output"></div>
           </div>
 
         </div>
@@ -93,6 +89,18 @@
     </main>
 
   </div>
+
+  <!-- AI DRAWER (SEPARATE FROM TERMINAL) -->
+  <div id="dock-ai">
+    <div class="pg-ai-output" id="ai-output"></div>
+    <div class="pg-ai-input-row">
+      <textarea id="ai-input" class="pg-ai-input" placeholder="Ask your AI assistant..."></textarea>
+      <button id="ai-send" class="pg-btn-primary">Send</button>
+    </div>
+  </div>
+
+  <!-- FLOATING AI BUTTON -->
+  <button id="ai-float-btn">AI</button>
 
   <!-- MAIN APP LOGIC -->
   <script src="static/app.js"></script>
