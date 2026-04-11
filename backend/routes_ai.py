@@ -1,29 +1,17 @@
-# backend/assistant/ai_panel_api.py
-"""
-AI Panel Pro Router (Wiring + Code + Image)
--------------------------------------------
+# backend/assistant/routes_ai.py
 
-Hardened + policy-driven + audit-logged + memory-aware.
-
-This router powers:
-- MCU wiring assistant
-- MCU firmware/code generator
-- Image generator (style + resolution)
-"""
-
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from pydantic import BaseModel
 from typing import Dict, List
 import uuid
 
-from assistant.policy import redact_dict
+from openai_client import chat as openai_chat, generate_image
 from assistant.audit_logger import AuditLogger
 
 router = APIRouter()
 
-# In-memory conversation store (swap to Redis/DB later)
+# In-memory conversation store
 CONVERSATIONS: Dict[str, List[Dict[str, str]]] = {}
-
 audit = AuditLogger()
 
 
@@ -42,41 +30,46 @@ class AIImageRequest(AIRequest):
 
 
 # ============================================================
-# MEMORY HELPERS
+# MEMORY
 # ============================================================
 
 def get_history(session_id: str):
     return CONVERSATIONS.get(session_id, [])
 
 
-def append_history(session_id: str, role: str, content: str):
+def add_history(session_id: str, role: str, content: str):
     CONVERSATIONS.setdefault(session_id, []).append({"role": role, "content": content})
     CONVERSATIONS[session_id] = CONVERSATIONS[session_id][-30:]
 
 
 # ============================================================
-# LLM CALL STUBS (replace with your engines)
+# LLM CALLS
 # ============================================================
 
-def call_wiring_llm(messages: List[Dict[str, str]]) -> str:
-    """
-    Replace with your real wiring model (Boardwalk MCU Wiring Expert).
-    """
-    return "[WIRING RESPONSE HERE]"
+def wiring_llm(messages):
+    resp = openai_chat(
+        model="gpt-4o",
+        messages=messages,
+        temperature=0.2
+    )
+    return resp.choices[0].message.content
 
 
-def call_code_llm(messages: List[Dict[str, str]]) -> str:
-    """
-    Replace with your real firmware/code generator.
-    """
-    return "[CODE RESPONSE HERE]"
+def code_llm(messages):
+    resp = openai_chat(
+        model="gpt-4o-mini",
+        messages=messages,
+        temperature=0.2
+    )
+    return resp.choices[0].message.content
 
 
-def call_image_engine(prompt: str, style: str, resolution: str) -> str:
-    """
-    Replace with SDXL / OpenAI / Flux / local model.
-    """
-    return f"/static/generated/{uuid.uuid4()}.png"
+def image_llm(prompt, style, resolution):
+    img = generate_image(
+        prompt=f"{prompt}, style={style}",
+        size=resolution
+    )
+    return img.data[0].url
 
 
 # ============================================================
@@ -85,65 +78,57 @@ def call_image_engine(prompt: str, style: str, resolution: str) -> str:
 
 @router.post("/ai/wiring")
 async def ai_wiring(req: AIRequest):
-    session = req.session_id
-    append_history(session, "user", f"[WIRING] {req.prompt}")
+    s = req.session_id
+    add_history(s, "user", f"[WIRING] {req.prompt}")
 
     system = (
         "You are Boardwalk MCU Wiring Expert. "
-        "You output JSON wiring plans, pin mappings, diagrams, and clear explanations. "
-        "Be precise, deterministic, and safe."
+        "Output JSON wiring plans, pin mappings, diagrams, and clear explanations."
     )
 
-    messages = [{"role": "system", "content": system}] + get_history(session)
+    messages = [{"role": "system", "content": system}] + get_history(s)
+    text = wiring_llm(messages)
 
-    text = call_wiring_llm(messages)
-
-    append_history(session, "assistant", text)
-    audit.log("ai_wiring", {"session": session, "prompt": req.prompt, "response": text})
+    add_history(s, "assistant", text)
+    audit.log("ai_wiring", {"session": s, "prompt": req.prompt, "response": text})
 
     return {"success": True, "text": text}
 
 
 @router.post("/ai/code")
 async def ai_code(req: AIRequest):
-    session = req.session_id
-    append_history(session, "user", f"[CODE] {req.prompt}")
+    s = req.session_id
+    add_history(s, "user", f"[CODE] {req.prompt}")
 
     system = (
         "You are Boardwalk Firmware Generator. "
-        "You generate MCU firmware code based on wiring, requirements, and constraints. "
-        "Output deterministic, production-grade code."
+        "Generate deterministic, production-grade MCU firmware."
     )
 
-    messages = [{"role": "system", "content": system}] + get_history(session)
+    messages = [{"role": "system", "content": system}] + get_history(s)
+    text = code_llm(messages)
 
-    text = call_code_llm(messages)
-
-    append_history(session, "assistant", text)
-    audit.log("ai_code", {"session": session, "prompt": req.prompt, "response": text})
+    add_history(s, "assistant", text)
+    audit.log("ai_code", {"session": s, "prompt": req.prompt, "response": text})
 
     return {"success": True, "text": text}
 
 
 @router.post("/ai/image")
 async def ai_image(req: AIImageRequest):
-    session = req.session_id
-    append_history(
-        session,
-        "user",
-        f"[IMAGE] {req.prompt} | style={req.style} | res={req.resolution}",
-    )
+    s = req.session_id
+    add_history(s, "user", f"[IMAGE] {req.prompt} | style={req.style} | res={req.resolution}")
 
-    image_url = call_image_engine(req.prompt, req.style, req.resolution)
+    url = image_llm(req.prompt, req.style, req.resolution)
     desc = f"Generated image in style '{req.style}' at {req.resolution}."
 
-    append_history(session, "assistant", desc)
+    add_history(s, "assistant", desc)
     audit.log("ai_image", {
-        "session": session,
+        "session": s,
         "prompt": req.prompt,
         "style": req.style,
         "resolution": req.resolution,
-        "image_url": image_url,
+        "image_url": url,
     })
 
-    return {"success": True, "image_url": image_url, "description": desc}
+    return {"success": True, "image_url": url, "description": desc}
