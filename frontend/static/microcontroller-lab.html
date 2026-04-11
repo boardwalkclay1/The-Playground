@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>MCU Breadboard Lab</title>
+  <link rel="stylesheet" href="/static/microcontroller-lab.css" />
+</head>
+
+<body>
+  <div id="app">
+
+    <!-- TOP BAR -->
+    <header class="topbar">
+      <div class="left">
+        <div class="title">MCU Breadboard Lab</div>
+        <div class="subtitle">ESP32 · Sensors · Wiring · Simulation · AI Assistant</div>
+      </div>
+
+      <div class="right">
+        <select id="board-select" class="bubble">
+          <option value="esp32-devkit-v1">ESP32 DevKit V1</option>
+          <option value="esp32-s3">ESP32‑S3</option>
+          <option value="esp8266">ESP8266</option>
+        </select>
+
+        <button id="import-project" class="btn">Import Firmware Project</button>
+        <button id="export-netlist" class="btn">Export Netlist</button>
+        <button id="simulate" class="btn primary">Simulate</button>
+      </div>
+    </header>
+
+    <!-- MAIN GRID -->
+    <main class="grid">
+
+      <!-- LEFT PANEL -->
+      <section class="panel left-panel">
+        <h3>Components</h3>
+        <div id="component-palette" class="palette">
+          <div class="comp" data-type="led">LED</div>
+          <div class="comp" data-type="resistor">Resistor</div>
+          <div class="comp" data-type="button">Button</div>
+          <div class="comp" data-type="dht11">DHT11</div>
+          <div class="comp" data-type="dht22">DHT22</div>
+          <div class="comp" data-type="pir">PIR Sensor</div>
+          <div class="comp" data-type="ultrasonic">Ultrasonic</div>
+          <div class="comp" data-type="oled">OLED SSD1306</div>
+        </div>
+
+        <h3 style="margin-top:20px;">AI Wiring Assistant</h3>
+        <textarea id="ai-wiring-input" placeholder="Describe what you want wired (e.g., 'Connect DHT22 to ESP32 and show wiring')"></textarea>
+        <button id="ai-wiring-run" class="btn full">Generate Wiring</button>
+        <button id="ai-wiring-from-code" class="btn full">Generate Wiring From Code</button>
+        <button id="ai-code-from-wiring" class="btn full">Generate Code From Wiring</button>
+      </section>
+
+      <!-- CENTER PANEL -->
+      <section class="panel center-panel">
+        <h3>Breadboard</h3>
+        <div id="breadboard-canvas" class="canvas"></div>
+      </section>
+
+      <!-- RIGHT PANEL -->
+      <section class="panel right-panel">
+        <h3>Netlist</h3>
+        <textarea id="netlist" class="netlist"></textarea>
+
+        <h3>Simulation</h3>
+        <div id="sim-output" class="sim-output">
+          <div class="status">No simulation yet.</div>
+          <div class="issues"></div>
+          <div class="warnings"></div>
+        </div>
+
+        <h3>AI Output</h3>
+        <pre id="ai-output" class="ai-output"></pre>
+      </section>
+
+    </main>
+  </div>
+
+  <script src="/static/microcontroller-lab.js"></script>
+</body>
+</html>
