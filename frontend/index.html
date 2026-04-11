@@ -1,49 +1,11 @@
 <!DOCTYPE html>
-<html data-theme="industrial" lang="en">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <title>Boardwalk Playground Studio</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <link rel="stylesheet" href="/static/style.css" />
-  <style>
-    /* Minimal inline styles to ensure layout works until your CSS loads */
-    :root { --left-w: 360px; --gap: 12px; --panel-bg: #111; --panel-fg: #eaeaea; }
-    body { margin:0; font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background:#0f1720; color:var(--panel-fg); }
-    .topbar { display:flex; align-items:center; justify-content:space-between; padding:10px 16px; background:#0b1220; border-bottom:1px solid rgba(255,255,255,0.03); }
-    .topbar-left { display:flex; align-items:center; gap:12px; }
-    .logo { width:28px; height:28px; object-fit:contain; }
-    .app-title { font-weight:600; letter-spacing:0.2px; }
-    .topbar-right { display:flex; gap:8px; align-items:center; }
-    .btn { background:transparent; color:var(--panel-fg); border:1px solid rgba(255,255,255,0.04); padding:6px 10px; border-radius:6px; cursor:pointer; }
-    .btn-primary { background:#2563eb; border-color:transparent; }
-    .btn-accent { background:#f59e0b; border-color:transparent; color:#111; }
-    .main-grid { display:grid; grid-template-columns: var(--left-w) 1fr; gap:var(--gap); padding:12px; height:calc(100vh - 56px); box-sizing:border-box; }
-    .left-column { overflow:auto; padding:8px; display:flex; flex-direction:column; gap:10px; }
-    .right-column { overflow:auto; padding:8px; display:flex; flex-direction:column; gap:10px; }
-    .panel { background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.03); }
-    .panel h3 { margin:0 0 8px 0; font-size:14px; }
-    textarea { width:100%; min-height:80px; background:#071022; color:var(--panel-fg); border:1px solid rgba(255,255,255,0.03); padding:8px; border-radius:6px; resize:vertical; }
-    pre { background:#061021; color:#dbeafe; padding:8px; border-radius:6px; max-height:240px; overflow:auto; }
-    .preview-frame { width:100%; height:420px; border:1px solid rgba(255,255,255,0.03); border-radius:6px; background:#fff; }
-    .pm-controls, .file-ops { display:flex; gap:8px; margin-top:8px; }
-    input[type="text"], input[type="search"] { padding:8px; border-radius:6px; border:1px solid rgba(255,255,255,0.03); background:#071022; color:var(--panel-fg); width:100%; }
-    .pm-list, .filetree { margin-top:8px; max-height:260px; overflow:auto; }
-    .pm-row, .ft-node { display:flex; align-items:center; gap:8px; padding:6px 4px; border-radius:6px; }
-    .pm-row:hover, .ft-node:hover { background:rgba(255,255,255,0.01); }
-    .editor { display:flex; flex-direction:column; gap:8px; }
-    .editor-textarea { min-height:320px; width:100%; padding:10px; border-radius:6px; background:#071022; color:var(--panel-fg); border:1px solid rgba(255,255,255,0.03); font-family:monospace; }
-    .editor-controls { display:flex; gap:8px; }
-    details summary { cursor:pointer; padding:6px 0; }
-    .tabs { display:flex; gap:6px; }
-    .tab { padding:6px 10px; border-radius:6px; background:transparent; border:1px solid rgba(255,255,255,0.03); cursor:pointer; }
-    .tab.active { background:rgba(255,255,255,0.02); }
-    .small { font-size:12px; padding:4px 8px; }
-    .flex-row { display:flex; gap:8px; align-items:center; }
-    .muted { color:rgba(255,255,255,0.45); font-size:13px; }
-  </style>
+  <link rel="stylesheet" href="/static/app.css" />
 </head>
-
-<body class="layout-two-column">
+<body>
 
   <!-- TOP BAR -->
   <header class="topbar">
@@ -157,12 +119,56 @@
       <!-- MICROCONTROLLER -->
       <section class="panel" id="panel-microcontroller">
         <h3>Microcontroller Builder</h3>
-        <textarea id="mcu-input" placeholder="Describe the ESP32/ESP8266 code you want..."></textarea>
-        <div style="display:flex;gap:8px;margin-top:8px;">
-          <input id="mcu-project" type="text" placeholder="Project name (optional)" />
-          <button id="mcu-run" class="btn btn-primary">Generate Firmware</button>
-          <button id="mcu-flash" class="btn">Flash (stub)</button>
+
+        <!-- High-level prompt -->
+        <textarea id="mcu-input" placeholder="Describe the ESP32 code or behavior you want..."></textarea>
+
+        <!-- Project + board + template row -->
+        <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px;">
+
+          <div style="display:flex;gap:8px;">
+            <input id="mcu-project" type="text" placeholder="Project name" />
+            <select id="mcu-board" class="btn small">
+              <option value="">Board: auto (ESP32 DevKit)</option>
+            </select>
+          </div>
+
+          <div style="display:flex;gap:8px;">
+            <select id="mcu-template" class="btn small">
+              <option value="">Template: none</option>
+            </select>
+            <select id="mcu-example" class="btn small">
+              <option value="">Example: ESP32 pack</option>
+              <option value="esp32-wifi-scan">WiFi Scan</option>
+              <option value="esp32-wifi-connect">WiFi Connect</option>
+              <option value="esp32-ble-uart">BLE UART</option>
+            </select>
+          </div>
+
+          <!-- Settings quick view -->
+          <div class="mcu-settings-row">
+            <input id="mcu-baud" type="number" class="small-input" placeholder="Baud (115200)" />
+            <input id="mcu-port" type="text" class="small-input" placeholder="Port (auto)" />
+            <select id="mcu-flash-mode" class="btn small">
+              <option value="">Flash mode (default dio)</option>
+              <option value="dio">DIO</option>
+              <option value="qio">QIO</option>
+            </select>
+            <select id="mcu-flash-freq" class="btn small">
+              <option value="">Flash freq (default 40m)</option>
+              <option value="40m">40 MHz</option>
+              <option value="80m">80 MHz</option>
+            </select>
+          </div>
+
+          <!-- Actions -->
+          <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap;">
+            <button id="mcu-run" class="btn btn-primary">Generate Firmware</button>
+            <button id="mcu-flash" class="btn">Flash (stub)</button>
+            <button id="mcu-open-lab" class="btn btn-secondary">Open MCU Breadboard Lab</button>
+          </div>
         </div>
+
         <pre id="mcu-output"></pre>
       </section>
 
@@ -177,7 +183,8 @@
             <li>File Engine (read/write/tree/move/delete)</li>
             <li>Project Manager (create/duplicate/delete/rename)</li>
             <li>Terminal Engine (terminal API or assistant fallback)</li>
-            <li>Microcontroller Engine (generate/flash)</li>
+            <li>Microcontroller Engine (generate / templates / boards / settings / simulate)</li>
+            <li>MCU Breadboard Lab (separate microcontroller page)</li>
             <li>Cloudflare Deploy (optional)</li>
           </ul>
         </details>
@@ -189,6 +196,7 @@
             <li>ESP toolchain integration (esptool, platformio)</li>
             <li>Cloudflare Workers/Pages deploy UI</li>
             <li>R2 / D1 / KV management</li>
+            <li>Deeper MCU library browser & installer</li>
           </ul>
         </details>
       </section>
@@ -226,7 +234,6 @@
   </main>
 
   <script>
-    // Quick UI wiring for panel switch, tabs, and open MCU page
     document.addEventListener("DOMContentLoaded", () => {
       const panelSwitch = document.getElementById("panel-switch");
       panelSwitch?.addEventListener("change", (e) => {
@@ -251,15 +258,20 @@
         });
       });
 
+      // Open MCU full-page lab
       document.getElementById("open-mcu-page")?.addEventListener("click", () => {
         window.open("/static/microcontroller.html", "_blank");
       });
+      document.getElementById("mcu-open-lab")?.addEventListener("click", () => {
+        window.open("/static/microcontroller.html", "_blank");
+      });
 
-      // Theme toggle placeholder
+      // Theme toggle
       document.getElementById("theme-toggle")?.addEventListener("click", () => {
         const current = document.documentElement.getAttribute("data-theme");
-        document.documentElement.setAttribute("data-theme", current === "industrial" ? "gold" : "industrial");
-        document.getElementById("theme-toggle").textContent = `Theme: ${document.documentElement.getAttribute("data-theme")}`;
+        const next = current === "industrial" ? "gold" : "industrial";
+        document.documentElement.setAttribute("data-theme", next);
+        document.getElementById("theme-toggle").textContent = `Theme: ${next}`;
       });
     });
   </script>
