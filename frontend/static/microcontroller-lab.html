@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>MCU Breadboard Lab</title>
+  <title>MCU Breadboard Lab Pro</title>
   <link rel="stylesheet" href="/static/microcontroller-lab.css" />
 </head>
 
@@ -12,7 +12,7 @@
     <!-- TOP BAR -->
     <header class="topbar">
       <div class="left">
-        <div class="title">MCU Breadboard Lab</div>
+        <div class="title">MCU Breadboard Lab Pro</div>
         <div class="subtitle">ESP32 · Sensors · Wiring · Simulation · AI Assistant</div>
       </div>
 
@@ -23,7 +23,11 @@
           <option value="esp8266">ESP8266</option>
         </select>
 
-        <button id="import-project" class="btn">Import Firmware Project</button>
+        <button id="toggle-wiring" class="btn">Wire Mode</button>
+        <button id="zoom-in" class="btn">+</button>
+        <button id="zoom-out" class="btn">−</button>
+
+        <button id="import-project" class="btn">Import Project</button>
         <button id="export-netlist" class="btn">Export Netlist</button>
         <button id="simulate" class="btn primary">Simulate</button>
       </div>
@@ -35,28 +39,24 @@
       <!-- LEFT PANEL -->
       <section class="panel left-panel">
         <h3>Components</h3>
-        <div id="component-palette" class="palette">
-          <div class="comp" data-type="led">LED</div>
-          <div class="comp" data-type="resistor">Resistor</div>
-          <div class="comp" data-type="button">Button</div>
-          <div class="comp" data-type="dht11">DHT11</div>
-          <div class="comp" data-type="dht22">DHT22</div>
-          <div class="comp" data-type="pir">PIR Sensor</div>
-          <div class="comp" data-type="ultrasonic">Ultrasonic</div>
-          <div class="comp" data-type="oled">OLED SSD1306</div>
-        </div>
+        <div id="component-palette" class="palette"></div>
 
         <h3 style="margin-top:20px;">AI Wiring Assistant</h3>
-        <textarea id="ai-wiring-input" placeholder="Describe what you want wired (e.g., 'Connect DHT22 to ESP32 and show wiring')"></textarea>
+        <textarea id="ai-wiring-input" placeholder="Describe wiring or paste code"></textarea>
         <button id="ai-wiring-run" class="btn full">Generate Wiring</button>
-        <button id="ai-wiring-from-code" class="btn full">Generate Wiring From Code</button>
-        <button id="ai-code-from-wiring" class="btn full">Generate Code From Wiring</button>
+        <button id="ai-wiring-from-code" class="btn full">Wiring From Code</button>
+        <button id="ai-code-from-wiring" class="btn full">Code From Wiring</button>
       </section>
 
       <!-- CENTER PANEL -->
       <section class="panel center-panel">
         <h3>Breadboard</h3>
-        <div id="breadboard-canvas" class="canvas"></div>
+
+        <div id="zoom-container">
+          <div id="board-layer"></div>
+          <svg id="wire-layer"></svg>
+          <div id="component-layer"></div>
+        </div>
       </section>
 
       <!-- RIGHT PANEL -->
@@ -65,11 +65,7 @@
         <textarea id="netlist" class="netlist"></textarea>
 
         <h3>Simulation</h3>
-        <div id="sim-output" class="sim-output">
-          <div class="status">No simulation yet.</div>
-          <div class="issues"></div>
-          <div class="warnings"></div>
-        </div>
+        <div id="sim-output" class="sim-output"></div>
 
         <h3>AI Output</h3>
         <pre id="ai-output" class="ai-output"></pre>
