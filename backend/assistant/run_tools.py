@@ -18,7 +18,9 @@ import asyncio
 import os
 import logging
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
+
+from shutil import which as shutil_which  # FIXED — correct import
 
 logger = logging.getLogger("assistant.run_tools")
 logger.addHandler(logging.NullHandler())
@@ -67,12 +69,10 @@ def _sanitize_env() -> Dict[str, str]:
     Keep PATH so common tools are found, but drop potentially sensitive variables.
     """
     safe_env = {}
-    # Keep PATH and LANG related variables
     for k in ("PATH", "LANG", "LC_ALL", "LC_CTYPE"):
         v = os.environ.get(k)
         if v:
             safe_env[k] = v
-    # Optionally include NODE_ENV or PYTHONUNBUFFERED if present and safe
     if "PYTHONUNBUFFERED" in os.environ:
         safe_env["PYTHONUNBUFFERED"] = os.environ["PYTHONUNBUFFERED"]
     return safe_env
@@ -94,10 +94,6 @@ class RunTools:
     """
 
     def run_backend(self, project_path: str, timeout: int = 30) -> Dict[str, Any]:
-        """
-        Default backend run. Adjust command as needed for your project.
-        """
-        # Try common entrypoints; prefer python main.py then uvicorn server:app
         candidates = [
             "python3 main.py",
             "python main.py",
@@ -106,34 +102,21 @@ class RunTools:
         for cmd in candidates:
             if _is_command_allowed(cmd):
                 return self.run_command(cmd, project_path, timeout=timeout)
-        # If none allowed, return an informative error
         return {"success": False, "error": "No allowed backend command configured. Set PLAYGROUND_ALLOW_UNSAFE_COMMANDS=true to override."}
 
     def run_frontend(self, project_path: str, timeout: int = 30) -> Dict[str, Any]:
-        """
-        Default frontend run. Uses npm run dev if available.
-        """
         cmd = "npm run dev"
         if not _is_command_allowed(cmd):
             return {"success": False, "error": "Frontend command not allowed by policy."}
         return self.run_command(cmd, project_path, timeout=timeout)
 
     def run_worker(self, project_path: str, timeout: int = 30) -> Dict[str, Any]:
-        """
-        Default worker run. Uses wrangler dev if available.
-        """
         cmd = "wrangler dev"
         if not _is_command_allowed(cmd):
             return {"success": False, "error": "Worker command not allowed by policy."}
         return self.run_command(cmd, project_path, timeout=timeout)
 
     def run_command(self, command: str, cwd: str, timeout: int = 30, capture_output: bool = True) -> Dict[str, Any]:
-        """
-        Run a command (string) in the given cwd. Returns a structured dict.
-        - command: shell-like string (will be split safely)
-        - cwd: working directory (must exist)
-        - timeout: seconds before killing the process
-        """
         try:
             project_dir = _ensure_within_project(cwd)
         except Exception as e:
@@ -147,18 +130,9 @@ class RunTools:
         except Exception:
             argv = [command]
 
-        # Basic check: ensure executable exists on PATH (best-effort)
         exe = argv[0]
-        if shutil_which := shutil_which := None:  # placeholder to avoid linter unused import; replaced below
-            pass
-        try:
-            from shutil import which as _which  # local import to avoid top-level dependency issues
-            if _which(exe) is None:
-                # Not necessarily fatal (could be a shell builtin), but warn
-                logger.debug("Executable not found on PATH: %s", exe)
-        except Exception:
-            # ignore which errors
-            pass
+        if shutil_which(exe) is None:
+            logger.debug("Executable not found on PATH: %s", exe)
 
         env = _sanitize_env()
 
@@ -177,18 +151,14 @@ class RunTools:
                 proc.kill()
                 out, err = proc.communicate()
                 return {"success": False, "error": "timeout", "exit_code": proc.returncode, "stdout": out, "stderr": err}
+
             return {"success": True, "exit_code": proc.returncode, "stdout": out, "stderr": err}
+
         except Exception as e:
             logger.exception("run_command failed")
             return {"success": False, "error": str(e)}
 
     async def stream_command(self, command: str, cwd: str, timeout: int = 300):
-        """
-        Async generator that yields lines of output as they arrive.
-        Usage:
-            async for msg in run_tools.stream_command("ls -la", "/path"):
-                handle(msg)  # msg is dict like {"type":"stdout","data":"..."} or {"type":"exit","code":0}
-        """
         try:
             project_dir = _ensure_within_project(cwd)
         except Exception as e:
@@ -224,38 +194,39 @@ class RunTools:
                         await proc.wait()
                         yield {"type": "error", "error": "timeout"}
                         break
+
                     if not line:
                         break
+
                     text = line.decode(errors="replace")
                     yield {"type": "stdout", "data": text}
+
                 await proc.wait()
                 yield {"type": "exit", "code": proc.returncode}
+
             except asyncio.CancelledError:
                 try:
                     proc.kill()
                 except Exception:
                     pass
                 raise
+
         except Exception as e:
             logger.exception("stream_command failed")
             yield {"type": "error", "error": str(e)}
 
-    # Backwards-compatible internal _run for older callers (kept synchronous)
     def _run(self, cmd: List[str], cwd: str, timeout: int = 30) -> Dict[str, Any]:
-        """
-        Compatibility wrapper used by older code. Accepts argv list.
-        """
         try:
             project_dir = _ensure_within_project(cwd)
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-        # Reconstruct command string for policy check
         cmd_str = " ".join(shlex.quote(c) for c in cmd)
         if not _is_command_allowed(cmd_str):
             return {"success": False, "error": "Command not allowed by server policy"}
 
         env = _sanitize_env()
+
         try:
             proc = subprocess.Popen(
                 cmd,
@@ -271,7 +242,9 @@ class RunTools:
                 proc.kill()
                 out, err = proc.communicate()
                 return {"success": False, "error": "timeout", "exit_code": proc.returncode, "stdout": out, "stderr": err}
+
             return {"success": True, "exit_code": proc.returncode, "stdout": out, "stderr": err}
+
         except Exception as e:
             logger.exception("_run failed")
             return {"success": False, "error": str(e)}
