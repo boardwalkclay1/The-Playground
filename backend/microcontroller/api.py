@@ -53,6 +53,22 @@ class SettingsUpdateRequest(BaseModel):
 
 # -------------------- ROUTES --------------------
 
+@router.get("/boards")
+def mcu_boards():
+    boards = list_supported_boards() or []
+    if not isinstance(boards, list):
+        boards = []
+    return {"boards": boards}
+
+
+@router.get("/templates")
+def mcu_list_templates():
+    templates = list_firmware_templates() or []
+    if not isinstance(templates, list):
+        templates = []
+    return {"templates": templates}
+
+
 @router.post("/generate")
 def mcu_generate(req: GenerateRequest):
     return generate_firmware(
@@ -74,16 +90,10 @@ def mcu_simulate(req: BreadboardRequest):
     return simulate_breadboard(req.project_name, req.netlist)
 
 
-@router.get("/templates")
-def mcu_list_templates():
-    # FIXED: return correct shape
-    return {"templates": list_firmware_templates()}
-
-
 @router.get("/templates/{template_id}")
 def mcu_get_template(template_id: str):
     res = load_firmware_template(template_id)
-    if not res.get("success"):
+    if not res or not res.get("success"):
         raise HTTPException(status_code=404, detail="Template not found")
     return res
 
@@ -98,12 +108,6 @@ def mcu_save_template(req: TemplateSaveRequest):
         files=req.files,
         board_id=req.board_id,
     )
-
-
-@router.get("/boards")
-def mcu_boards():
-    # FIXED: return correct shape
-    return {"boards": list_supported_boards()}
 
 
 @router.get("/settings/{project_name}")
