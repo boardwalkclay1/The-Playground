@@ -1,48 +1,214 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Microcontroller Builder</title>
+  <title>MCU Builder · Boardwalk Playground</title>
   <link rel="stylesheet" href="/static/style.css" />
+  <style>
+    body {
+      background: #05060a;
+      color: #f5f5f7;
+      font-family: system-ui, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+    .page {
+      padding: 20px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 22px;
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+    .row {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+    textarea {
+      width: 100%;
+      height: 140px;
+      background: #0b0f1a;
+      border: 1px solid #2b3148;
+      border-radius: 8px;
+      padding: 10px;
+      color: #f5f5f7;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 13px;
+    }
+    input, select {
+      background: #0b0f1a;
+      border: 1px solid #2b3148;
+      border-radius: 8px;
+      padding: 8px 10px;
+      color: #f5f5f7;
+      font-size: 13px;
+    }
+    button {
+      background: #2563eb;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 14px;
+      color: #fff;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+    }
+    button:hover {
+      background: #1d4ed8;
+    }
+    pre {
+      background: #0b0f1a;
+      border: 1px solid #2b3148;
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 15px;
+      white-space: pre-wrap;
+      font-size: 12px;
+      color: #e5e7eb;
+    }
+    .section-title {
+      margin-top: 20px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #9ca3af;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+  </style>
 </head>
+
 <body>
-  <main class="main-grid">
-    <section class="panel">
-      <h2>Microcontroller Builder</h2>
-      <textarea id="mcu-prompt" placeholder="Describe firmware"></textarea>
-      <div>
-        <input id="mcu-project" placeholder="project name (optional)" />
-        <button id="mcu-gen">Generate</button>
-        <button id="mcu-flash">Flash</button>
-      </div>
-      <pre id="mcu-out"></pre>
-    </section>
-  </main>
+  <div class="page">
+
+    <h1>Microcontroller Builder</h1>
+
+    <div class="section-title">Firmware Prompt</div>
+    <textarea id="mcu-prompt" placeholder="Describe the ESP32 firmware you want..."></textarea>
+
+    <div class="section-title">Project & Board</div>
+    <div class="row">
+      <input id="mcu-project" placeholder="Project name (default: mcu-sandbox)" />
+      <select id="mcu-board">
+        <option value="">Board: auto (ESP32 DevKit V1)</option>
+      </select>
+    </div>
+
+    <div class="section-title">Templates & Examples</div>
+    <div class="row">
+      <select id="mcu-template">
+        <option value="">Template: none</option>
+      </select>
+
+      <select id="mcu-example">
+        <option value="">Example: ESP32 pack</option>
+        <option value="esp32-wifi-scan">WiFi Scan</option>
+        <option value="esp32-wifi-connect">WiFi Connect</option>
+        <option value="esp32-ble-uart">BLE UART</option>
+      </select>
+    </div>
+
+    <div class="section-title">Flash Settings</div>
+    <div class="row">
+      <input id="mcu-baud" type="number" placeholder="Baud (115200)" />
+      <input id="mcu-port" placeholder="Port (auto)" />
+      <select id="mcu-flash-mode">
+        <option value="">Flash mode (default dio)</option>
+        <option value="dio">DIO</option>
+        <option value="qio">QIO</option>
+      </select>
+      <select id="mcu-flash-freq">
+        <option value="">Flash freq (default 40m)</option>
+        <option value="40m">40 MHz</option>
+        <option value="80m">80 MHz</option>
+      </select>
+    </div>
+
+    <div class="row" style="margin-top:15px;">
+      <button id="mcu-gen">Generate Firmware</button>
+      <button id="mcu-flash">Flash (stub)</button>
+      <button id="mcu-open-lab" style="background:#4b5563;">Open Breadboard Lab</button>
+    </div>
+
+    <pre id="mcu-out">Ready.</pre>
+
+  </div>
+
   <script>
-    async function postJSON(path, body) {
-      const res = await fetch(path, {
+    async function postJSON(url, body) {
+      const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
       return res.json();
     }
+
+    async function loadBoards() {
+      const res = await fetch("/mcu/boards");
+      const data = await res.json();
+      const sel = document.getElementById("mcu-board");
+      data.boards.forEach(b => {
+        const opt = document.createElement("option");
+        opt.value = b.id;
+        opt.textContent = b.name;
+        sel.appendChild(opt);
+      });
+    }
+
+    async function loadTemplates() {
+      const res = await fetch("/mcu/templates");
+      const data = await res.json();
+      const sel = document.getElementById("mcu-template");
+      data.templates.forEach(t => {
+        const opt = document.createElement("option");
+        opt.value = t.id;
+        opt.textContent = t.name;
+        sel.appendChild(opt);
+      });
+    }
+
     document.getElementById("mcu-gen").addEventListener("click", async () => {
       const prompt = document.getElementById("mcu-prompt").value.trim();
+      if (!prompt) return alert("Enter firmware description.");
+
       const project = document.getElementById("mcu-project").value.trim() || "mcu-sandbox";
-      if (!prompt) return alert("Enter prompt");
+      const board = document.getElementById("mcu-board").value || null;
+      const template = document.getElementById("mcu-template").value || null;
+      const example = document.getElementById("mcu-example").value || null;
+
       const out = document.getElementById("mcu-out");
-      out.textContent = "Generating...";
-      const res = await postJSON("/api/microcontroller/generate", { project_name: project, prompt });
+      out.textContent = "Generating firmware...";
+
+      const res = await postJSON("/mcu/generate", {
+        project_name: project,
+        prompt,
+        board_id: board,
+        template_id: template || example || null,
+        merge_strategy: "overwrite"
+      });
+
       out.textContent = JSON.stringify(res, null, 2);
     });
+
     document.getElementById("mcu-flash").addEventListener("click", async () => {
       const project = document.getElementById("mcu-project").value.trim() || "mcu-sandbox";
       const out = document.getElementById("mcu-out");
       out.textContent = "Flashing (stub)...";
-      const res = await postJSON("/api/microcontroller/flash", { project_name: project, port: null });
+
+      const res = await postJSON("/mcu/flash", { project_name: project });
       out.textContent = JSON.stringify(res, null, 2);
     });
+
+    document.getElementById("mcu-open-lab").addEventListener("click", () => {
+      window.open("/static/microcontroller-lab.html", "_blank");
+    });
+
+    loadBoards();
+    loadTemplates();
   </script>
 </body>
 </html>
