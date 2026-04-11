@@ -1,17 +1,24 @@
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, List
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
+import uuid
 
 from generator.orchestrator import run_universal_generator
 from assistant import AIAgent
 
 # Modular imports
 try:
-    from project_manager import list_projects, create_project, delete_project, duplicate_project, rename_project
+    from project_manager import (
+        list_projects,
+        create_project,
+        delete_project,
+        duplicate_project,
+        rename_project,
+    )
 except Exception:
     list_projects = lambda: []
     create_project = lambda name: {"success": False, "error": "project_manager not installed"}
@@ -29,12 +36,11 @@ try:
 except Exception:
     terminal_router = None
 
-# NEW: MCU API router
+# MCU API router (optional)
 try:
     from microcontroller.api import router as mcu_router
 except Exception:
     mcu_router = None
-
 
 app = FastAPI()
 PROJECTS_ROOT = Path("projects")
@@ -100,6 +106,33 @@ class TerminalRequest(BaseModel):
     command: str
 
 
+# AI Panel Pro models
+class AIPanelRequest(BaseModel):
+    prompt: str
+    session_id: str
+
+
+class AIPanelImageRequest(AIPanelRequest):
+    style: str
+    resolution: str
+
+
+# -----------------------------
+# IN-MEMORY CONVERSATION STORE
+# (swap to DB/Redis later)
+# -----------------------------
+CONVERSATIONS: Dict[str, List[Dict[str, str]]] = {}
+
+
+def get_history(session_id: str) -> List[Dict[str, str]]:
+    return CONVERSATIONS.get(session_id, [])
+
+
+def append_history(session_id: str, role: str, content: str) -> None:
+    CONVERSATIONS.setdefault(session_id, []).append({"role": role, "content": content})
+    CONVERSATIONS[session_id] = CONVERSATIONS[session_id][-30:]
+
+
 # -----------------------------
 # GENERATOR
 # -----------------------------
@@ -120,7 +153,7 @@ def api_generator_run(req: GeneratorRequest):
 
 
 # -----------------------------
-# ASSISTANT
+# ASSISTANT (PROJECT-AWARE)
 # -----------------------------
 @app.post("/api/assistant/run")
 def api_assistant_run(req: AssistantRequest):
@@ -197,7 +230,6 @@ def api_rename_project(payload: ProjectRenameRequest):
 if files_router:
     app.include_router(files_router, prefix="/api")
 else:
-    # fallback inline implementation
     @app.get("/api/files/tree/{project_name}")
     def api_files_tree(project_name: str):
         project_path = PROJECTS_ROOT / project_name
@@ -209,7 +241,14 @@ else:
             for p in sorted(base.iterdir(), key=lambda x: x.name):
                 rel = p.relative_to(root).as_posix()
                 if p.is_dir():
-                    items.append({"type": "dir", "name": p.name, "path": rel, "children": build_tree(p, root)})
+                    items.append(
+                        {
+                            "type": "dir",
+                            "name": p.name,
+                            "path": rel,
+                            "children": build_tree(p, root),
+                        }
+                    )
                 else:
                     items.append({"type": "file", "name": p.name, "path": rel})
             return items
@@ -240,6 +279,7 @@ else:
             raise HTTPException(status_code=404, detail="File not found")
         if file_path.is_dir():
             import shutil
+
             shutil.rmtree(file_path)
         else:
             file_path.unlink()
@@ -264,9 +304,53 @@ else:
 
 
 # -----------------------------
-# MCU ROUTER (NEW)
+# MCU ROUTER (OPTIONAL)
 # -----------------------------
 if mcu_router:
     app.include_router(mcu_router, prefix="/mcu")
-else:
-    raise RuntimeError("microcontroller.api router missing — MCU system not installed")
+
+
+# -----------------------------
+# AI PANEL PRO ROUTES
+# -----------------------------
+@app.post("/ai/wiring")
+def ai_wiring(req: AIPanelRequest):
+    history = get_history(req.session_id)
+    append_history(req.session_id, "user", f"[WIRING] {req.prompt}")
+
+    # TODO: wire to your LLM (Boardwalk MCU wiring expert)
+    text = "[WIRING RESPONSE HERE]"  # replace with real model call
+
+    append_history(req.session_id, "assistant", text)
+    return {"text": text}
+
+
+@app.post("/ai/code")
+def ai_code(req: AIPanelRequest):
+    history = get_history(req.session_id)
+    append_history(req.session_id, "user", f"[CODE] {req.prompt}")
+
+    # TODO: wire to your LLM (firmware / app code generator)
+    text = "[CODE RESPONSE HERE]"  # replace with real model call
+
+    append_history(req.session_id, "assistant", text)
+    return {"text": text}
+
+
+@app.post("/ai/image")
+def ai_image(req: AIPanelImageRequest):
+    history = get_history(req.session_id)
+    append_history(
+        req.session_id,
+        "user",
+        f"[IMAGE] {req.prompt} | style={req.style} | res={req.resolution}",
+    )
+
+    # TODO: call your image model (SDXL / OpenAI / etc.)
+    # image_url = generate_image(req.prompt, style=req.style, resolution=req.resolution)
+    image_url = f"/static/generated/{uuid.uuid4()}.png"  # placeholder path
+
+    desc = f"Generated image in style '{req.style}' at {req.resolution}."
+    append_history(req.session_id, "assistant", desc)
+
+    return {"image_url": image_url, "description": desc}
