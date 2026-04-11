@@ -6,256 +6,132 @@
   <link rel="stylesheet" href="static/style.css" />
 </head>
 
-<body class="layout-page">
+<body class="playground-root">
 
-  <!-- TOP BAR -->
-  <header class="topbar">
-    <div class="topbar-left">
-      <img src="/static/logo.png" class="logo" alt="Boardwalk logo" />
+  <!-- TOP NAV BAR -->
+  <header class="pg-topbar">
+    <button id="burger" class="pg-burger">☰</button>
+
+    <div class="pg-topbar-title">
+      <img src="/static/logo.png" class="pg-logo" />
       <div>
-        <div class="app-title">Boardwalk Playground Studio</div>
-        <div class="muted">Local dev playground · generator · assistant · deploy</div>
+        <div class="pg-title">Boardwalk Playground Studio</div>
+        <div class="pg-subtitle">Build · Generate · Flash · Deploy</div>
       </div>
     </div>
 
-    <div class="topbar-right">
-      <div class="flex-row">
-        <select id="panel-switch" class="btn small" title="Quick switch panels">
-          <option value="">Quick panels</option>
-          <option value="panel-projects">Projects</option>
-          <option value="panel-filetree">File Tree</option>
-          <option value="panel-generator">Generator</option>
-          <option value="panel-ai">AI Assistant</option>
-          <option value="panel-terminal">Terminal</option>
-          <option value="panel-microcontroller">Microcontroller</option>
-          <option value="panel-capabilities">Capabilities</option>
-        </select>
-
-        <button id="theme-toggle" class="btn">Theme</button>
-        <button id="open-mcu-page" class="btn">Open MCU Page</button>
-      </div>
+    <div class="pg-topbar-actions">
+      <button id="theme-toggle" class="pg-btn">Theme</button>
     </div>
   </header>
 
   <!-- MAIN LAYOUT -->
-  <main class="page-main">
+  <div class="pg-layout">
 
-    <!-- LEFT COLUMN -->
-    <aside class="left-column">
-
-      <!-- PROJECTS -->
-      <section class="panel" id="panel-projects">
-        <h3>Projects</h3>
-        <div class="pm-controls">
-          <input id="pm-new-name" type="text" placeholder="New project name" />
-          <button id="pm-create" class="btn btn-primary">Create</button>
-        </div>
-        <div id="pm-list" class="pm-list"></div>
-      </section>
-
-      <!-- FILE TREE -->
-      <section class="panel" id="panel-filetree">
-        <h3>File Tree</h3>
-        <div id="ft-root" class="filetree">No project selected</div>
-      </section>
-
-      <!-- GENERATOR -->
-      <section class="panel" id="panel-generator">
-        <h3>App Generator</h3>
-        <textarea id="generator-input" placeholder="Describe the app you want to build..."></textarea>
-        <div style="display:flex;gap:8px;margin-top:8px;">
-          <button id="generator-run" class="btn btn-primary">Generate App</button>
-          <select id="generator-type" class="btn small">
-            <option value="generic">Generic</option>
-            <option value="web">Web App</option>
-            <option value="microcontroller">Microcontroller</option>
-            <option value="worker">Cloudflare Worker</option>
-          </select>
-        </div>
-      </section>
-
-      <!-- AI ASSISTANT -->
-      <section class="panel" id="panel-ai">
-        <h3>AI Assistant</h3>
-        <textarea id="assistant-input" placeholder="Tell your AI what to do..."></textarea>
-        <div style="display:flex;gap:8px;margin-top:8px;">
-          <button id="assistant-run" class="btn btn-secondary">Run Assistant</button>
-          <button id="assistant-chat-mode" class="btn small">Chat Mode</button>
-          <select id="assistant-action" class="btn small">
-            <option value="default">Action: default</option>
-            <option value="edit-file">Edit file</option>
-            <option value="run-command">Run command</option>
-            <option value="generate-mcu">Generate MCU</option>
-          </select>
-        </div>
-        <pre id="assistant-output"></pre>
-      </section>
-
-      <!-- TERMINAL -->
-      <section class="panel" id="panel-terminal">
-        <h3>Command Terminal</h3>
-
-        <div class="tabs" role="tablist">
-          <button class="tab active" data-tab="terminal">Terminal</button>
-          <button class="tab" data-tab="logs">Logs</button>
-          <button class="tab" data-tab="errors">Errors</button>
-        </div>
-
-        <div id="terminal-tab-terminal" style="margin-top:8px;">
-          <input id="terminal-input" type="text" placeholder="Enter command..." />
-          <div style="display:flex;gap:8px;margin-top:8px;">
-            <button id="terminal-run" class="btn btn-accent">Run Command</button>
-            <button id="terminal-clear" class="btn">Clear</button>
-          </div>
-          <pre id="terminal-output"></pre>
-        </div>
-
-        <div id="terminal-tab-logs" style="display:none;margin-top:8px;">
-          <pre id="terminal-logs-output"></pre>
-        </div>
-
-        <div id="terminal-tab-errors" style="display:none;margin-top:8px;">
-          <pre id="terminal-errors-output"></pre>
-        </div>
-      </section>
-
-      <!-- MCU BUILDER -->
-      <section class="panel" id="panel-microcontroller">
-        <h3>Microcontroller Builder</h3>
-
-        <textarea id="mcu-input" placeholder="Describe the ESP32 code or behavior you want..."></textarea>
-
-        <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px;">
-
-          <div style="display:flex;gap:8px;">
-            <input id="mcu-project" type="text" placeholder="Project name" />
-            <select id="mcu-board" class="btn small">
-              <option value="">Board: auto (ESP32 DevKit)</option>
-            </select>
-          </div>
-
-          <div style="display:flex;gap:8px;">
-            <select id="mcu-template" class="btn small">
-              <option value="">Template: none</option>
-            </select>
-            <select id="mcu-example" class="btn small">
-              <option value="">Example: ESP32 pack</option>
-              <option value="esp32-wifi-scan">WiFi Scan</option>
-              <option value="esp32-wifi-connect">WiFi Connect</option>
-              <option value="esp32-ble-uart">BLE UART</option>
-            </select>
-          </div>
-
-          <div class="mcu-settings-row">
-            <input id="mcu-baud" type="number" class="small-input" placeholder="Baud (115200)" />
-            <input id="mcu-port" type="text" class="small-input" placeholder="Port (auto)" />
-            <select id="mcu-flash-mode" class="btn small">
-              <option value="">Flash mode (default dio)</option>
-              <option value="dio">DIO</option>
-              <option value="qio">QIO</option>
-            </select>
-            <select id="mcu-flash-freq" class="btn small">
-              <option value="">Flash freq (default 40m)</option>
-              <option value="40m">40 MHz</option>
-              <option value="80m">80 MHz</option>
-            </select>
-          </div>
-
-          <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap;">
-            <button id="mcu-run" class="btn btn-primary">Generate Firmware</button>
-            <button id="mcu-flash" class="btn">Flash (stub)</button>
-            <button id="mcu-open-lab" class="btn btn-secondary">Open MCU Breadboard Lab</button>
-          </div>
-        </div>
-
-        <pre id="mcu-output"></pre>
-      </section>
-
-      <!-- CAPABILITIES -->
-      <section class="panel" id="panel-capabilities">
-        <h3>Capabilities</h3>
-        <p class="muted">See full capabilities page for complete system manual.</p>
-        <a href="/capabilities" class="btn btn-primary" style="margin-top:8px;">Open Capabilities</a>
-      </section>
-
+    <!-- LEFT SIDEBAR -->
+    <aside class="pg-sidebar" id="sidebar">
+      <button class="pg-nav-btn" data-panel="projects">Projects</button>
+      <button class="pg-nav-btn" data-panel="filetree">File Tree</button>
+      <button class="pg-nav-btn" data-panel="generator">Generator</button>
+      <button class="pg-nav-btn" data-panel="microcontroller">Microcontroller</button>
+      <button class="pg-nav-btn" data-panel="cloudflare">Cloudflare</button>
+      <button class="pg-nav-btn" data-panel="capabilities">Capabilities</button>
+      <button class="pg-nav-btn" data-panel="settings">Settings</button>
     </aside>
 
-    <!-- RIGHT COLUMN -->
-    <section class="right-column">
+    <!-- MAIN WORK AREA -->
+    <main class="pg-main">
 
-      <!-- PREVIEW -->
-      <section class="panel" id="panel-preview">
-        <h3>Preview</h3>
-        <div id="preview-root"><p class="muted">No preview loaded</p></div>
+      <!-- MAIN SCREEN (TOP) -->
+      <section class="pg-main-screen" id="main-screen">
+        <div class="pg-main-header">Main Screen</div>
+        <div id="main-content" class="pg-main-content">
+          <p class="muted">Your editor, preview, generator, and tools will appear here.</p>
+        </div>
       </section>
 
-      <!-- MAIN VIEW -->
-      <section class="panel" id="panel-main-view">
-        <h3>Main View</h3>
-        <div id="main-root"><p class="muted">Editor and details will appear here</p></div>
+      <!-- BOTTOM DOCK -->
+      <section class="pg-dock">
+
+        <!-- DOCK TABS -->
+        <div class="pg-dock-tabs">
+          <button class="pg-dock-tab active" data-dock="terminal">Terminal</button>
+          <button class="pg-dock-tab" data-dock="errors">Errors</button>
+          <button class="pg-dock-tab" data-dock="ai">AI Assistant</button>
+        </div>
+
+        <!-- DOCK PANELS -->
+        <div class="pg-dock-panels">
+
+          <!-- TERMINAL PANEL -->
+          <div class="pg-dock-panel" id="dock-terminal">
+            <div class="pg-terminal-output" id="terminal-output"></div>
+            <div class="pg-terminal-input-row">
+              <input id="terminal-input" class="pg-terminal-input" placeholder="Enter command..." />
+              <button id="terminal-run" class="pg-btn-accent">Run</button>
+              <button id="terminal-clear" class="pg-btn">Clear</button>
+            </div>
+          </div>
+
+          <!-- ERRORS PANEL -->
+          <div class="pg-dock-panel hidden" id="dock-errors">
+            <div class="pg-errors-output" id="errors-output"></div>
+          </div>
+
+          <!-- AI PANEL -->
+          <div class="pg-dock-panel hidden" id="dock-ai">
+            <div class="pg-ai-output" id="ai-output"></div>
+            <div class="pg-ai-input-row">
+              <textarea id="ai-input" class="pg-ai-input" placeholder="Ask your AI assistant..."></textarea>
+              <button id="ai-send" class="pg-btn-primary">Send</button>
+            </div>
+          </div>
+
+        </div>
       </section>
 
-      <!-- LOGS -->
-      <section class="panel" id="panel-logs">
-        <h3>Build & System Logs</h3>
-        <pre id="logs-output"></pre>
-      </section>
+    </main>
 
-      <!-- ERRORS -->
-      <section class="panel" id="panel-errors">
-        <h3>Preview & Runtime Errors</h3>
-        <pre id="errors-output"></pre>
-      </section>
+  </div>
 
-    </section>
-
-  </main>
-
-  <!-- INLINE SCRIPT FOR THEME + PANEL SWITCH + TERMINAL TABS -->
+  <!-- SCRIPT: PANEL SWITCHING + DOCK LOGIC + THEME -->
   <script>
     document.addEventListener("DOMContentLoaded", () => {
 
-      // Panel switcher
-      const panelSwitch = document.getElementById("panel-switch");
-      panelSwitch?.addEventListener("change", (e) => {
-        const id = e.target.value;
-        if (!id) return;
-        const el = document.getElementById(id);
-        if (!el) return;
-        el.scrollIntoView({ behavior: "smooth", block: "center" });
-        panelSwitch.value = "";
-      });
-
-      // Terminal tabs
-      const tabs = document.querySelectorAll(".tab");
-      tabs.forEach((t) => {
-        t.addEventListener("click", () => {
-          tabs.forEach(x => x.classList.remove("active"));
-          t.classList.add("active");
-          const tab = t.dataset.tab;
-          document.getElementById("terminal-tab-terminal").style.display = tab === "terminal" ? "" : "none";
-          document.getElementById("terminal-tab-logs").style.display = tab === "logs" ? "" : "none";
-          document.getElementById("terminal-tab-errors").style.display = tab === "errors" ? "" : "none";
+      // SIDEBAR NAVIGATION
+      document.querySelectorAll(".pg-nav-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const panel = btn.dataset.panel;
+          document.getElementById("main-content").innerHTML =
+            `<h2>${panel}</h2><p class="muted">Panel content will load here.</p>`;
         });
       });
 
-      // Open MCU full-page lab
-      document.getElementById("open-mcu-page")?.addEventListener("click", () => {
-        window.open("/static/microcontroller.html", "_blank");
+      // DOCK TAB SWITCHING
+      const dockTabs = document.querySelectorAll(".pg-dock-tab");
+      dockTabs.forEach(tab => {
+        tab.addEventListener("click", () => {
+          dockTabs.forEach(t => t.classList.remove("active"));
+          tab.classList.add("active");
+
+          const target = tab.dataset.dock;
+          document.querySelectorAll(".pg-dock-panel").forEach(panel => {
+            panel.classList.add("hidden");
+          });
+          document.getElementById(`dock-${target}`).classList.remove("hidden");
+        });
       });
 
-      // Theme toggle
-      document.getElementById("theme-toggle")?.addEventListener("click", () => {
+      // THEME TOGGLE
+      document.getElementById("theme-toggle").addEventListener("click", () => {
         const current = document.documentElement.getAttribute("data-theme");
         const next = current === "industrial" ? "gold" : "industrial";
         document.documentElement.setAttribute("data-theme", next);
-        document.getElementById("theme-toggle").textContent = `Theme: ${next}`;
       });
 
     });
   </script>
 
-  <!-- MAIN APP LOGIC -->
   <script src="static/app.js"></script>
 
 </body>
