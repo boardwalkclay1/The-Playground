@@ -1,14 +1,6 @@
 # backend/microcontroller/engine.py
 """
 Super-arduino microcontroller engine (ESP-focused)
-
-Features:
-- Sandboxed MCU workspace under projects/mcu-sandbox/<project>
-- Board picker + serial/flash settings
-- Template-based firmware generation (ESP32 examples, custom templates)
-- AI-assisted firmware generation (AIAgent)
-- Breadboard simulation hook (netlist + rule checks)
-- Audit logging for all major actions
 """
 
 from pathlib import Path
@@ -47,10 +39,6 @@ MCU_ROOT = Path("projects/mcu-sandbox")
 MCU_ROOT.mkdir(parents=True, exist_ok=True)
 
 
-def _now_iso() -> str:
-    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-
-
 def _atomic_write(path: Path, content: str):
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
@@ -78,41 +66,25 @@ def _project_dir(project_name: str) -> Path:
     return MCU_ROOT / project_name
 
 
-# ---------------------------------------------------------------------------
-# Template + board aware firmware generation
-# ---------------------------------------------------------------------------
-
 def generate_firmware(
     project_name: str,
     prompt: str,
     template_id: Optional[str] = None,
     board_id: Optional[str] = None,
-    merge_strategy: str = "overwrite",  # overwrite | append | hybrid (future)
+    merge_strategy: str = "overwrite",
 ) -> Dict[str, Any]:
-    """
-    Generate firmware using:
-    - optional template (ESP32 examples or custom)
-    - board definition (pins, flash params)
-    - AI agent for custom logic
-
-    Result: project folder with files + metadata.
-    """
     project_dir = _project_dir(project_name)
     if project_dir.exists():
         shutil.rmtree(project_dir)
     project_dir.mkdir(parents=True, exist_ok=True)
 
     audit = AuditLogger(MCU_ROOT)
-
-    # Ensure ESP32 example pack is present
     ensure_esp32_examples_installed()
 
-    # Resolve board
     if not board_id:
         board_id = default_board_id()
     board = get_board(board_id)
 
-    # Load settings (baud, flash mode, etc.) or create defaults
     settings = load_settings(project_dir) or MCUSettings(
         board_id=board_id,
         baud_rate=115200,
@@ -122,13 +94,11 @@ def generate_firmware(
     )
     save_settings(project_dir, settings)
 
-    # Start with template files if provided
     base_files: Dict[str, str] = {}
     if template_id:
         tmpl = load_template(template_id)
         base_files.update(tmpl.get("files", {}))
 
-    # Build strict microcontroller prompt
     full_prompt = (
         "microcontroller-generate\n"
         f"project:{project_name}\n"
@@ -159,7 +129,6 @@ def generate_firmware(
         "agent_result": redact_dict(result),
     })
 
-    # Extract JSON from agent result
     files: Dict[str, str] = {}
     raw = None
     if isinstance(result, dict):
@@ -172,7 +141,6 @@ def generate_firmware(
     if isinstance(raw, str):
         files = _safe_json_load(raw)
 
-    # Merge with template files
     if not files:
         files = {}
     if merge_strategy == "overwrite":
@@ -184,7 +152,7 @@ def generate_firmware(
                 merged[k] = merged[k] + "\n\n" + v
             else:
                 merged[k] = v
-    else:  # hybrid placeholder (can be refined later)
+    else:
         merged = {**base_files, **files}
 
     if not merged:
@@ -214,15 +182,8 @@ def generate_firmware(
     }
 
 
-# ---------------------------------------------------------------------------
-# Template management (library)
-# ---------------------------------------------------------------------------
-
 def list_firmware_templates() -> Dict[str, Any]:
-    return {
-        "success": True,
-        "templates": list_templates(),
-    }
+    return {"success": True, "templates": list_templates()}
 
 
 def save_firmware_template(
@@ -250,10 +211,6 @@ def load_firmware_template(template_id: str) -> Dict[str, Any]:
         return {"success": False, "error": "Template not found"}
     return {"success": True, "template": tmpl}
 
-
-# ---------------------------------------------------------------------------
-# Board + settings
-# ---------------------------------------------------------------------------
 
 def list_supported_boards() -> Dict[str, Any]:
     return {"success": True, "boards": list_boards()}
@@ -286,10 +243,6 @@ def update_board_settings(project_name: str, new_settings: Dict[str, Any]) -> Di
     save_settings(project_dir, updated)
     return {"success": True, "settings": json.loads(updated.json())}
 
-
-# ---------------------------------------------------------------------------
-# Flashing (still safe stub, but board/settings aware)
-# ---------------------------------------------------------------------------
 
 def flash_firmware(project_name: str) -> Dict[str, Any]:
     project_dir = _project_dir(project_name)
@@ -328,24 +281,11 @@ def flash_firmware(project_name: str) -> Dict[str, Any]:
     }
 
 
-# ---------------------------------------------------------------------------
-# Breadboard simulation hook
-# ---------------------------------------------------------------------------
-
 def simulate_breadboard(project_name: str, netlist: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    netlist: {
-      "board_id": "esp32-devkit-v1",
-      "vcc": 5.0,
-      "components": [...],
-      "connections": [...]
-    }
-    """
     project_dir = _project_dir(project_name)
     audit = AuditLogger(MCU_ROOT)
 
     result = simulate_circuit(netlist)
-    # Persist last simulation for this project
     sim_path = project_dir / "breadboard-sim.json"
     _atomic_write(sim_path, json.dumps(result, indent=2))
 
