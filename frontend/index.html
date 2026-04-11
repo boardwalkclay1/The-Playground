@@ -1,11 +1,12 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="industrial">
 <head>
   <meta charset="UTF-8" />
   <title>Boardwalk Playground Studio</title>
   <link rel="stylesheet" href="/static/app.css" />
 </head>
-<body>
+
+<body class="layout-page">
 
   <!-- TOP BAR -->
   <header class="topbar">
@@ -29,14 +30,15 @@
           <option value="panel-microcontroller">Microcontroller</option>
           <option value="panel-capabilities">Capabilities</option>
         </select>
+
         <button id="theme-toggle" class="btn">Theme</button>
         <button id="open-mcu-page" class="btn">Open MCU Page</button>
       </div>
     </div>
   </header>
 
-  <!-- MAIN GRID -->
-  <main class="main-grid">
+  <!-- MAIN LAYOUT -->
+  <main class="page-main">
 
     <!-- LEFT COLUMN -->
     <aside class="left-column">
@@ -57,7 +59,7 @@
         <div id="ft-root" class="filetree">No project selected</div>
       </section>
 
-      <!-- APP GENERATOR -->
+      <!-- GENERATOR -->
       <section class="panel" id="panel-generator">
         <h3>App Generator</h3>
         <textarea id="generator-input" placeholder="Describe the app you want to build..."></textarea>
@@ -89,17 +91,18 @@
         <pre id="assistant-output"></pre>
       </section>
 
-      <!-- COMMAND TERMINAL -->
+      <!-- TERMINAL -->
       <section class="panel" id="panel-terminal">
         <h3>Command Terminal</h3>
-        <div class="tabs" role="tablist" aria-label="Terminal tabs">
+
+        <div class="tabs" role="tablist">
           <button class="tab active" data-tab="terminal">Terminal</button>
           <button class="tab" data-tab="logs">Logs</button>
           <button class="tab" data-tab="errors">Errors</button>
         </div>
 
         <div id="terminal-tab-terminal" style="margin-top:8px;">
-          <input id="terminal-input" type="text" placeholder="Enter command (e.g., git status)" />
+          <input id="terminal-input" type="text" placeholder="Enter command..." />
           <div style="display:flex;gap:8px;margin-top:8px;">
             <button id="terminal-run" class="btn btn-accent">Run Command</button>
             <button id="terminal-clear" class="btn">Clear</button>
@@ -116,14 +119,12 @@
         </div>
       </section>
 
-      <!-- MICROCONTROLLER -->
+      <!-- MCU BUILDER -->
       <section class="panel" id="panel-microcontroller">
         <h3>Microcontroller Builder</h3>
 
-        <!-- High-level prompt -->
         <textarea id="mcu-input" placeholder="Describe the ESP32 code or behavior you want..."></textarea>
 
-        <!-- Project + board + template row -->
         <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px;">
 
           <div style="display:flex;gap:8px;">
@@ -145,7 +146,6 @@
             </select>
           </div>
 
-          <!-- Settings quick view -->
           <div class="mcu-settings-row">
             <input id="mcu-baud" type="number" class="small-input" placeholder="Baud (115200)" />
             <input id="mcu-port" type="text" class="small-input" placeholder="Port (auto)" />
@@ -161,7 +161,6 @@
             </select>
           </div>
 
-          <!-- Actions -->
           <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap;">
             <button id="mcu-run" class="btn btn-primary">Generate Firmware</button>
             <button id="mcu-flash" class="btn">Flash (stub)</button>
@@ -175,30 +174,8 @@
       <!-- CAPABILITIES -->
       <section class="panel" id="panel-capabilities">
         <h3>Capabilities</h3>
-        <details open>
-          <summary>Core Engines</summary>
-          <ul>
-            <li>App Generator Engine (generator/orchestrator)</li>
-            <li>AI Assistant Engine (assistant.AIAgent)</li>
-            <li>File Engine (read/write/tree/move/delete)</li>
-            <li>Project Manager (create/duplicate/delete/rename)</li>
-            <li>Terminal Engine (terminal API or assistant fallback)</li>
-            <li>Microcontroller Engine (generate / templates / boards / settings / simulate)</li>
-            <li>MCU Breadboard Lab (separate microcontroller page)</li>
-            <li>Cloudflare Deploy (optional)</li>
-          </ul>
-        </details>
-        <details>
-          <summary>Planned Features</summary>
-          <ul>
-            <li>Syntax highlighting editor (Monaco/CodeMirror)</li>
-            <li>Live logs streaming</li>
-            <li>ESP toolchain integration (esptool, platformio)</li>
-            <li>Cloudflare Workers/Pages deploy UI</li>
-            <li>R2 / D1 / KV management</li>
-            <li>Deeper MCU library browser & installer</li>
-          </ul>
-        </details>
+        <p class="muted">See full capabilities page for complete system manual.</p>
+        <a href="/capabilities" class="btn btn-primary" style="margin-top:8px;">Open Capabilities</a>
       </section>
 
     </aside>
@@ -212,7 +189,7 @@
         <div id="preview-root"><p class="muted">No preview loaded</p></div>
       </section>
 
-      <!-- MAIN VIEW (Editor / Chat / Details) -->
+      <!-- MAIN VIEW -->
       <section class="panel" id="panel-main-view">
         <h3>Main View</h3>
         <div id="main-root"><p class="muted">Editor and details will appear here</p></div>
@@ -231,10 +208,14 @@
       </section>
 
     </section>
+
   </main>
 
+  <!-- INLINE SCRIPT FOR THEME + PANEL SWITCH + TERMINAL TABS -->
   <script>
     document.addEventListener("DOMContentLoaded", () => {
+
+      // Panel switcher
       const panelSwitch = document.getElementById("panel-switch");
       panelSwitch?.addEventListener("change", (e) => {
         const id = e.target.value;
@@ -262,9 +243,6 @@
       document.getElementById("open-mcu-page")?.addEventListener("click", () => {
         window.open("/static/microcontroller.html", "_blank");
       });
-      document.getElementById("mcu-open-lab")?.addEventListener("click", () => {
-        window.open("/static/microcontroller.html", "_blank");
-      });
 
       // Theme toggle
       document.getElementById("theme-toggle")?.addEventListener("click", () => {
@@ -273,9 +251,12 @@
         document.documentElement.setAttribute("data-theme", next);
         document.getElementById("theme-toggle").textContent = `Theme: ${next}`;
       });
+
     });
   </script>
 
+  <!-- MAIN APP LOGIC -->
   <script src="/static/app.js"></script>
+
 </body>
 </html>
