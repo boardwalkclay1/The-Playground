@@ -1,11 +1,105 @@
-// MCU LAB ENGINE — microcontroller-lab.js
-
+// MCU LAB ENGINE — UPGRADED
 console.log("MCU Lab Loaded");
 
+/* -------------------------------------------------------
+   DOM ELEMENTS
+------------------------------------------------------- */
 const canvas = document.getElementById("breadboard-canvas");
 const netlistEl = document.getElementById("netlist");
 const aiOut = document.getElementById("ai-output");
 const simOut = document.getElementById("sim-output");
+const palette = document.getElementById("component-palette");
+
+/* -------------------------------------------------------
+   IMAGE SOURCES (LOCAL OR CDN)
+------------------------------------------------------- */
+const IMAGE_BASE = "/static/breadboard"; 
+// If you want CDN instead, replace with:
+// const IMAGE_BASE = "https://raw.githubusercontent.com/wokwi/wokwi-assets/main";
+
+/* -------------------------------------------------------
+   AUTO-REGISTERED COMPONENTS
+------------------------------------------------------- */
+const COMPONENT_REGISTRY = {
+  // Basic
+  led: "LED",
+  resistor: "Resistor",
+  button: "Button",
+  potentiometer: "Potentiometer",
+  buzzer: "Buzzer",
+  relay: "Relay Module",
+  servo: "Servo Motor",
+  "stepper-driver": "Stepper Driver A4988",
+
+  // Environmental
+  dht11: "DHT11",
+  dht22: "DHT22",
+  bme280: "BME280",
+  bmp280: "BMP280",
+  mq2: "MQ-2 Gas Sensor",
+  mq135: "MQ-135 Air Quality",
+  "soil-moisture": "Soil Moisture Sensor",
+  "water-level": "Water Level Sensor",
+  "rain-sensor": "Rain Sensor",
+
+  // Motion / Distance / Light
+  pir: "PIR Motion Sensor",
+  ultrasonic: "Ultrasonic HC-SR04",
+  "tof-vl53l0x": "Laser ToF VL53L0X",
+  "ir-obstacle": "IR Obstacle Sensor",
+  ldr: "Photoresistor (LDR)",
+
+  // Specialty
+  "microwave-radar": "Microwave Radar RCWL-0516",
+  "laser-emitter": "Laser Emitter",
+  "laser-receiver": "Laser Receiver",
+  "flame-sensor": "Flame Sensor",
+  "sound-sensor": "Sound Sensor",
+  "vibration-sensor": "Vibration Sensor",
+  "hall-sensor": "Hall Effect Sensor",
+
+  // Displays
+  "oled-ssd1306": "OLED SSD1306",
+  lcd1602: "LCD 1602",
+  lcd2004: "LCD 2004",
+  tft18: "TFT 1.8\" SPI",
+
+  // Communication
+  nrf24l01: "NRF24L01",
+  "lora-sx1278": "LoRa SX1278",
+  hc05: "Bluetooth HC-05",
+  esp01: "ESP-01 WiFi",
+  "rfid-rc522": "RFID RC522",
+
+  // Power
+  buck: "Buck Converter",
+  boost: "Boost Converter",
+  "battery-holder": "Battery Holder",
+  "solar-panel": "Solar Panel",
+};
+
+/* -------------------------------------------------------
+   AUTO-GENERATE PALETTE
+------------------------------------------------------- */
+palette.innerHTML = "";
+Object.entries(COMPONENT_REGISTRY).forEach(([key, label]) => {
+  const div = document.createElement("div");
+  div.className = "comp";
+  div.dataset.type = key;
+  div.draggable = true;
+
+  // Image preview
+  const img = document.createElement("img");
+  img.src = `${IMAGE_BASE}/components/${key}.png`;
+  img.className = "comp-icon";
+
+  const text = document.createElement("span");
+  text.textContent = label;
+
+  div.appendChild(img);
+  div.appendChild(text);
+  palette.appendChild(div);
+});
 
 /* -------------------------------------------------------
    DRAG & DROP COMPONENTS
@@ -24,18 +118,15 @@ canvas.addEventListener("drop", (e) => {
   e.preventDefault();
   if (!draggedType) return;
 
-  const el = document.createElement("div");
+  const el = document.createElement("img");
   el.className = "placed-comp";
   el.dataset.type = draggedType;
+  el.src = `${IMAGE_BASE}/components/${draggedType}.png`;
   el.style.position = "absolute";
   el.style.left = e.offsetX + "px";
   el.style.top = e.offsetY + "px";
-  el.style.padding = "6px 10px";
-  el.style.background = "#1a2235";
-  el.style.border = "1px solid #2b3148";
-  el.style.borderRadius = "6px";
+  el.style.width = "60px";
   el.style.cursor = "pointer";
-  el.textContent = draggedType;
 
   canvas.appendChild(el);
   rebuildNetlist();
@@ -57,7 +148,7 @@ function rebuildNetlist() {
 }
 
 /* -------------------------------------------------------
-   AI WIRING ASSISTANT
+   AI REQUEST WRAPPER
 ------------------------------------------------------- */
 async function aiRequest(endpoint, payload) {
   const res = await fetch(endpoint, {
@@ -68,6 +159,9 @@ async function aiRequest(endpoint, payload) {
   return res.json();
 }
 
+/* -------------------------------------------------------
+   AI WIRING ASSISTANT
+------------------------------------------------------- */
 document.getElementById("ai-wiring-run").addEventListener("click", async () => {
   const prompt = document.getElementById("ai-wiring-input").value.trim();
   if (!prompt) return alert("Enter wiring description");
