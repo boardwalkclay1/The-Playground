@@ -5,6 +5,7 @@
     "cat ",
     "python ",
     "python3 ",
+    "python -m ",
     "pip ",
     "npm ",
     "node ",
@@ -12,12 +13,80 @@
     "pwd",
     "whoami",
     "curl ",
-    "stat "
+    "stat ",
+    "uvicorn ",
+    "pytest ",
+    "fastapi "
   ],
-  "allowed_exact": ["pwd", "whoami", "ls"],
+
+  "allowed_exact": [
+    "pwd",
+    "whoami",
+    "ls"
+  ],
+
   "max_timeout_seconds": 300,
   "allow_unsafe": false,
+
   "audit_log_path": "assistant-audit.log",
-  "require_approval_for": ["rm ", "sudo ", "shutdown", "reboot", "docker ", "kubectl "],
-  "redact_keys": ["password", "secret", "token", "api_key"]
+
+  "require_approval_for": [
+    "rm ",
+    "sudo ",
+    "shutdown",
+    "reboot",
+    "docker ",
+    "kubectl ",
+    "truncate ",
+    "chmod ",
+    "chown ",
+    "mkfs ",
+    "mount ",
+    "umount ",
+    "usb_export",
+    "apply_patch",
+    "delete_file",
+    "delete_dir"
+  ],
+
+  "redact_keys": [
+    "password",
+    "secret",
+    "token",
+    "api_key",
+    "auth",
+    "bearer",
+    "private_key"
+  ],
+
+  "assistant_actions_allowed": [
+    "create_file",
+    "edit_file",
+    "delete_file",
+    "move_file",
+    "list_files",
+    "read_file",
+    "propose_patch",
+    "apply_patch",
+
+    "python_explain",
+    "python_generate",
+    "python_run",
+
+    "git_clone",
+
+    "analyze_repo",
+    "build_repo_ui",
+
+    "usb_list",
+    "usb_export"
+  ],
+
+  "assistant_actions_require_approval": [
+    "delete_file",
+    "delete_dir",
+    "apply_patch",
+    "move_file",
+    "usb_export"
+  ]
 }
