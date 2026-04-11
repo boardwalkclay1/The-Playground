@@ -3,27 +3,215 @@
 <head>
   <meta charset="UTF-8" />
   <title>Boardwalk Playground · Plugins</title>
-  <link rel="stylesheet" href="/static/style.css" />
+  <link rel="stylesheet" href="/frontend/static/style.css" />
+
+  <style>
+    .search-bar {
+      margin-bottom: 20px;
+      width: 100%;
+    }
+    .search-bar input {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--bg-panel);
+      color: var(--text);
+      font-size: 14px;
+    }
+
+    .plugin-card {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 14px;
+      background: var(--bg-panel);
+      transition: 0.2s ease;
+      cursor: pointer;
+    }
+    .plugin-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+    }
+
+    .plugin-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .plugin-name {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: 0.05em;
+    }
+
+    .plugin-status {
+      font-size: 12px;
+      padding: 4px 8px;
+      border-radius: 6px;
+      background: var(--bg-muted);
+      color: var(--text-muted);
+    }
+
+    .plugin-content {
+      margin-top: 10px;
+      font-size: 13px;
+      line-height: 1.6em;
+      color: var(--text);
+      display: none;
+    }
+
+    .plugin-card.open .plugin-content {
+      display: block;
+    }
+
+    .plugin-actions {
+      margin-top: 12px;
+      display: flex;
+      gap: 10px;
+    }
+
+    .log-panel {
+      margin-top: 20px;
+      padding: 14px;
+      border-radius: 10px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      height: 200px;
+      overflow-y: auto;
+      font-size: 12px;
+      color: var(--text);
+      white-space: pre-wrap;
+    }
+  </style>
 </head>
+
 <body class="layout-page">
+
+  <!-- TOP BAR -->
   <header class="topbar">
     <div class="topbar-left">
-      <img src="/static/logo.png" class="logo" />
+      <img src="/frontend/static/logo.png" class="logo" />
       <span class="app-title">Boardwalk Playground · Plugins</span>
     </div>
+
     <div class="topbar-right">
-      <a href="/" class="btn btn-ghost">Back to Dashboard</a>
+      <a href="/" class="btn btn-ghost">Back</a>
       <button id="theme-toggle" class="btn btn-ghost">Theme: Industrial</button>
     </div>
   </header>
 
+  <!-- MAIN -->
   <main class="page-main">
     <section class="panel">
-      <h2>Plugins</h2>
+
+      <h2>Plugins Control Center</h2>
+
+      <!-- SEARCH BAR -->
+      <div class="search-bar">
+        <input id="plugin-search" placeholder="Search plugins, capabilities, or definitions…" />
+      </div>
+
+      <!-- PLUGIN LIST -->
       <div id="plugins-list"></div>
+
+      <!-- LOG OUTPUT -->
+      <h3 style="margin-top:20px;">Plugin Logs</h3>
+      <div id="plugin-log" class="log-panel"></div>
+
     </section>
   </main>
 
-  <script src="/static/app.js"></script>
+  <script src="/frontend/static/app.js"></script>
+
+  <script>
+    // Toggle plugin card
+    function attachPluginCardEvents() {
+      document.querySelectorAll(".plugin-card").forEach(card => {
+        card.addEventListener("click", () => {
+          card.classList.toggle("open");
+        });
+      });
+    }
+
+    // Search filter
+    const search = document.getElementById("plugin-search");
+    search.addEventListener("input", () => {
+      const q = search.value.toLowerCase();
+      document.querySelectorAll(".plugin-card").forEach(card => {
+        const text = card.innerText.toLowerCase();
+        card.style.display = text.includes(q) ? "block" : "none";
+      });
+    });
+
+    // Load plugins from backend
+    async function loadPlugins() {
+      try {
+        const res = await fetch("/api/plugins/list");
+        const plugins = await res.json();
+
+        const container = document.getElementById("plugins-list");
+        container.innerHTML = "";
+
+        plugins.forEach(plugin => {
+          const card = document.createElement("div");
+          card.className = "plugin-card";
+
+          card.innerHTML = `
+            <div class="plugin-header">
+              <div class="plugin-name">${plugin.name}</div>
+              <div class="plugin-status">${plugin.enabled ? "Enabled" : "Disabled"}</div>
+            </div>
+
+            <div class="plugin-content">
+              <div><strong>Description:</strong> ${plugin.description}</div>
+              <div><strong>Version:</strong> ${plugin.version}</div>
+              <div><strong>Capabilities:</strong> ${plugin.capabilities.join(", ")}</div>
+
+              <div class="plugin-actions">
+                <button class="btn btn-primary" onclick="runPlugin('${plugin.id}', event)">Run</button>
+                <button class="btn btn-primary" onclick="togglePlugin('${plugin.id}', event)">
+                  ${plugin.enabled ? "Disable" : "Enable"}
+                </button>
+                <button class="btn btn-danger" onclick="removePlugin('${plugin.id}', event)">Remove</button>
+              </div>
+            </div>
+          `;
+
+          container.appendChild(card);
+        });
+
+        attachPluginCardEvents();
+
+      } catch (err) {
+        console.error("Failed to load plugins:", err);
+      }
+    }
+
+    // Plugin actions
+    async function runPlugin(id, e) {
+      e.stopPropagation();
+      const res = await fetch("/api/plugins/run/" + id);
+      const text = await res.text();
+      document.getElementById("plugin-log").textContent += text + "\\n";
+    }
+
+    async function togglePlugin(id, e) {
+      e.stopPropagation();
+      await fetch("/api/plugins/toggle/" + id);
+      loadPlugins();
+    }
+
+    async function removePlugin(id, e) {
+      e.stopPropagation();
+      await fetch("/api/plugins/remove/" + id);
+      loadPlugins();
+    }
+
+    loadPlugins();
+  </script>
+
 </body>
 </html>
