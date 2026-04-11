@@ -1,6 +1,9 @@
 # backend/generator/orchestrator.py
 
-from typing import List, Type
+from typing import List, Type, Dict, Any
+import os
+import openai
+
 from .base import GenContext, GenResult, GenModule
 
 # CORE MODULES (universal building blocks)
@@ -22,17 +25,20 @@ from .git_clone import clone_repo
 from .repo_ui import build_repo_ui
 
 """
-IMPORTANT:
-This orchestrator is the MASTER CONTROLLER.
+SUPER APP GENERATOR ORCHESTRATOR
 
-It does 3 things:
+This is the master controller for full-stack app generation.
 
-1. Creates a GenContext (prompt, project_name, app_type)
-2. Runs every core module in order OR dispatches to a specialized engine
-3. Returns a GenResult with logs + errors
-
-This is the UNIVERSAL GENERATOR ENGINE.
+- Uses an LLM planner to design the app (frontend, backend, workers, Cloudflare, GitHub, etc.)
+- Runs your existing modules as the build pipeline
+- Still supports specialized engines (python-app, python-backend, git-clone, repo-ui)
 """
+
+openai.api_key = os.getenv("OPENAI_API_KEY")
+
+MODELS: Dict[str, str] = {
+    "planner": "gpt-4o",
+}
 
 # ORDER MATTERS — this is the build pipeline
 CORE_MODULES: List[Type[GenModule]] = [
@@ -64,11 +70,73 @@ def _result_from_dict(ctx: GenContext, project_name: str, ok: bool, payload: dic
     )
 
 
+def _plan_app_with_llm(prompt: str, project_name: str, app_type: str) -> Dict[str, Any]:
+    """
+    Use GPT-4o as a planner to design the full app:
+    - architecture
+    - folders
+    - files
+    - frontend/backend/worker responsibilities
+    - Cloudflare + GitHub integration
+    """
+    system = (
+        "You are the Boardwalk Playground SUPER APP PLANNER.\n"
+        "You design complete full-stack web apps that will be built by a module pipeline.\n"
+        "The environment has these capabilities:\n"
+        "- Project scaffold (folders, base files)\n"
+        "- Frontend UI shell (index.html, app shell, basic layout)\n"
+        "- Backend service descriptor (API endpoints, routes, handlers)\n"
+        "- Cloudflare Worker + wrangler config\n"
+        "- API client for frontend\n"
+        "- D1 database schema stub\n"
+        "- R2 storage config stub\n"
+        "- KV storage config stub\n"
+        "- GitHub metadata (repo info, CI hints)\n"
+        "- Auth + security seeds\n"
+        "- AI assistant control file\n\n"
+        "Your job is to output a concise JSON plan describing:\n"
+        "- high_level_goal: one sentence\n"
+        "- architecture: short description\n"
+        "- frontend: key pages/components\n"
+        "- backend: key routes/services\n"
+        "- worker: what the worker does\n"
+        "- data: main entities/tables\n"
+        "- github: repo/CI notes\n"
+        "- notes: any extra constraints\n"
+        "Keep it compact but concrete. This plan will be logged and used by modules."
+    )
+
+    user = (
+        f"Project name: {project_name}\n"
+        f"App type: {app_type}\n"
+        f"User prompt: {prompt}\n\n"
+        "Return ONLY a JSON object. No prose, no markdown."
+    )
+
+    resp = openai.chat.completions.create(
+        model=MODELS["planner"],
+        messages=[
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ],
+        temperature=0.3,
+    )
+
+    content = resp.choices[0].message.content or "{}"
+    try:
+        plan = json.loads(content)
+    except Exception:
+        # Fallback: wrap raw content
+        plan = {"raw_plan": content}
+    return plan
+
+
 def run_universal_generator(prompt: str, project_name: str, app_type: str) -> GenResult:
     """
-    The main entry point for generating ANY app.
+    SUPER APP GENERATOR ENTRYPOINT
 
     - Creates context
+    - Uses LLM to plan the app (full-stack, workers, Cloudflare, GitHub, etc.)
     - For known special types, dispatches to dedicated engines
     - Otherwise runs all core modules in order
     - Collects logs + errors
@@ -82,7 +150,20 @@ def run_universal_generator(prompt: str, project_name: str, app_type: str) -> Ge
     )
 
     try:
-        ctx.log(f"Starting universal generator for project='{project_name}', type='{app_type}'")
+        ctx.log(f"Starting SUPER app generator for project='{project_name}', type='{app_type}'")
+
+        # ----------------------------------------------------
+        # LLM PLANNING PHASE (for all app types)
+        # ----------------------------------------------------
+        try:
+            plan = _plan_app_with_llm(prompt, project_name, app_type)
+            # Attach plan to context so modules can optionally use it
+            setattr(ctx, "plan", plan)
+            ctx.log("LLM app plan generated.")
+            ctx.log(f"LLM PLAN (summary): {plan.get('high_level_goal', '')}")
+        except Exception as e:
+            ctx.error(f"LLM planning failed: {e}")
+            setattr(ctx, "plan", {"error": str(e)})
 
         # ----------------------------------------------------
         # SPECIALIZED ENGINES
@@ -121,7 +202,7 @@ def run_universal_generator(prompt: str, project_name: str, app_type: str) -> Ge
             return _result_from_dict(ctx, project_name, ok, payload or {"error": "Repo UI build failed"})
 
         # ----------------------------------------------------
-        # DEFAULT UNIVERSAL PIPELINE
+        # DEFAULT FULL-STACK PIPELINE (USES MODULES)
         # ----------------------------------------------------
         for module_cls in CORE_MODULES:
             module = module_cls()
@@ -131,9 +212,9 @@ def run_universal_generator(prompt: str, project_name: str, app_type: str) -> Ge
         success = len(ctx.errors) == 0
 
         if success:
-            ctx.log("Generation completed successfully.")
+            ctx.log("SUPER app generation completed successfully.")
         else:
-            ctx.error("Generation completed with errors.")
+            ctx.error("SUPER app generation completed with errors.")
 
         return GenResult(
             success=success,
@@ -143,7 +224,7 @@ def run_universal_generator(prompt: str, project_name: str, app_type: str) -> Ge
         )
 
     except Exception as e:
-        ctx.error(f"UNHANDLED EXCEPTION in generator: {e}")
+        ctx.error(f"UNHANDLED EXCEPTION in SUPER generator: {e}")
         return GenResult(
             success=False,
             project_name=project_name,
