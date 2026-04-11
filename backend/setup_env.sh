@@ -65,7 +65,7 @@ echo "[+] Checking Wrangler..."
 wrangler --version || echo "WARNING: Wrangler not installed"
 
 # -------------------------------
-# 8) Verify Node/NPM (for Pages builds)
+# 8) Verify Node/NPM (optional)
 # -------------------------------
 echo "[+] Checking Node..."
 node --version || echo "WARNING: Node not installed"
@@ -94,25 +94,24 @@ except Exception as e:
 EOF
 
 # -------------------------------
-# 10) Auto-start frontend
+# 10) Auto-start frontend (STATIC HTML)
 # -------------------------------
 echo "[+] Launching frontend..."
 cd ../frontend
-npm install --silent
 
-# Start frontend in background
-npm run dev &
+# Start static server for index.html
+python3 -m http.server 5173 &
 
-# Give frontend time to boot
+# Give server time to boot
 sleep 2
 
 # Auto-open browser
-if command -v xdg-open >/dev/null 2>&1; then
-  xdg-open http://localhost:5173
+if command -v start >/dev/null 2>&1; then
+  start http://localhost:5173
 elif command -v open >/dev/null 2>&1; then
   open http://localhost:5173
-elif command -v start >/dev/null 2>&1; then
-  start http://localhost:5173
+elif command -v xdg-open >/dev/null 2>&1; then
+  xdg-open http://localhost:5173
 fi
 
 # -------------------------------
