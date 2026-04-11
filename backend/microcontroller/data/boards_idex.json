@@ -1,0 +1,38 @@
+{
+  "boards": [
+    {
+      "id": "esp32-devkit-v1",
+      "name": "ESP32 DevKit V1",
+      "vendor": "Espressif",
+      "voltage": 3.3,
+      "max_current_ma": 500,
+      "flash_mode": "dio",
+      "flash_freq": "40m",
+      "default_baud": 115200,
+      "pins": {
+        "3V3": "3.3V output",
+        "GND": "Ground",
+        "GPIO2": "LED / IO",
+        "GPIO4": "IO",
+        "GPIO5": "IO",
+        "GPIO12": "IO",
+        "GPIO13": "IO",
+        "GPIO14": "IO",
+        "GPIO15": "IO",
+        "GPIO16": "IO",
+        "GPIO17": "IO",
+        "GPIO18": "SCK",
+        "GPIO19": "MISO",
+        "GPIO21": "SDA",
+        "GPIO22": "SCL",
+        "GPIO23": "MOSI",
+        "GPIO25": "DAC1",
+        "GPIO26": "DAC2",
+        "GPIO32": "ADC",
+        "GPIO33": "ADC",
+        "GPIO34": "ADC input only",
+        "GPIO35": "ADC input only"
+      }
+    }
+  ]
+}
