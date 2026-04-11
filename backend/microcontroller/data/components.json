@@ -1,0 +1,11 @@
+{
+  "components": [
+    { "type": "led", "max_current_ma": 20, "forward_voltage": 2.0 },
+    { "type": "resistor", "min_ohm": 1, "max_ohm": 10000000 },
+    { "type": "capacitor", "min_uF": 0.0001, "max_uF": 10000 },
+    { "type": "button", "max_current_ma": 50 },
+    { "type": "sensor-dht11", "voltage_min": 3.0, "voltage_max": 5.5 },
+    { "type": "sensor-dht22", "voltage_min": 3.0, "voltage_max": 6.0 },
+    { "type": "oled-ssd1306", "voltage_min": 3.0, "voltage_max": 5.0 }
+  ]
+}
