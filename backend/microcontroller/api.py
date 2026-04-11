@@ -76,6 +76,7 @@ def mcu_simulate(req: BreadboardRequest):
 
 @router.get("/templates")
 def mcu_list_templates():
+    # FIXED: return correct shape
     return {"templates": list_firmware_templates()}
 
 
@@ -101,6 +102,7 @@ def mcu_save_template(req: TemplateSaveRequest):
 
 @router.get("/boards")
 def mcu_boards():
+    # FIXED: return correct shape
     return {"boards": list_supported_boards()}
 
 
