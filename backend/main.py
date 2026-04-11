@@ -13,14 +13,12 @@ This app integrates:
 - GitHub ops
 - MCU router (optional)
 - AI Panel Pro
-- Static assets
 """
 
 from pathlib import Path
 from typing import Dict, Any, List
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 import uuid
@@ -62,7 +60,7 @@ except Exception:
 
 
 # ============================================================
-# APP + STATIC
+# APP
 # ============================================================
 
 app = FastAPI()
@@ -76,7 +74,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
+# IMPORTANT:
+# We DO NOT mount /static here.
+# Static files are served by the frontend server (python3 -m http.server 5173).
 
 
 # ============================================================
@@ -170,7 +170,7 @@ def api_generator_run(req: GeneratorRequest):
 
 
 # ============================================================
-# ASSISTANT ROUTER (FULL FEATURE SET)
+# ASSISTANT ROUTER
 # ============================================================
 
 app.include_router(assistant_router, prefix="/api")
@@ -237,7 +237,7 @@ def api_rename_project(payload: ProjectRenameRequest):
 
 
 # ============================================================
-# FILES ROUTER (OPTIONAL)
+# FILES ROUTER
 # ============================================================
 
 if files_router:
@@ -245,7 +245,7 @@ if files_router:
 
 
 # ============================================================
-# TERMINAL ROUTER (OPTIONAL)
+# TERMINAL ROUTER
 # ============================================================
 
 if terminal_router:
@@ -253,7 +253,7 @@ if terminal_router:
 
 
 # ============================================================
-# MCU ROUTER (OPTIONAL)
+# MCU ROUTER
 # ============================================================
 
 if mcu_router:
