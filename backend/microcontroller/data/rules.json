@@ -1,0 +1,6 @@
+{
+  "max_vcc": 5.5,
+  "min_vcc": 1.8,
+  "led_series_resistor_min_ohm": 100,
+  "esp32_max_pin_current_ma": 12
+}
