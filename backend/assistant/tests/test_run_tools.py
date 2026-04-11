@@ -1,175 +1,110 @@
-# backend/utils/file_ops.py
-"""
-Hardened File Operations (Platform‑Wide Standard)
--------------------------------------------------
-
-This module provides the *lowest‑level* safe file operations used across the
-entire platform:
-
-- Path traversal protection
-- Atomic writes (temp file → replace)
-- Optional timestamped backups
-- Deterministic directory creation
-- UTF‑8 safe reads/writes
-- Structured return payloads
-- Never throws exceptions
-"""
-
-from pathlib import Path
-from typing import Dict, Any, Optional
-import time
-import shutil
+# backend/assistant/tests/test_run_tools.py
 import tempfile
-import json
+import shutil
+from pathlib import Path
+import pytest
+import asyncio
+
+from backend.assistant.run_tools import RunTools
+
+
+@pytest.fixture
+def tmp_project():
+    d = Path(tempfile.mkdtemp())
+    yield d
+    shutil.rmtree(d)
 
 
 # ============================================================
-# INTERNAL HELPERS
+# BASIC run_command
 # ============================================================
 
-def _now_stamp() -> str:
-    return time.strftime("%Y%m%dT%H%M%S", time.gmtime())
+def test_run_command_echo(tmp_project):
+    rt = RunTools()
 
+    script = tmp_project / "script.sh"
+    script.write_text("#!/bin/sh\necho hello\n", encoding="utf-8")
 
-def _ensure_parent(path: Path):
-    try:
-        path.parent.mkdir(parents=True, exist_ok=True)
-    except Exception:
-        pass
+    import os
+    os.chmod(script, 0o755)
 
-
-def _atomic_write(path: Path, content: str) -> None:
-    """
-    Atomic write using a temp file in the same directory.
-    """
-    _ensure_parent(path)
-
-    fd, tmp = tempfile.mkstemp(dir=str(path.parent))
-    tmp_path = Path(tmp)
-
-    try:
-        with open(fd, "wb") as f:
-            f.write(content.encode("utf-8"))
-
-        # Atomic replace
-        tmp_path.replace(path)
-
-    finally:
-        try:
-            if tmp_path.exists():
-                tmp_path.unlink()
-        except Exception:
-            pass
-
-
-def _create_backup(path: Path) -> Optional[str]:
-    """
-    Create timestamped backup if file exists.
-    """
-    try:
-        if not path.exists():
-            return None
-        bak = path.with_name(path.name + f".bak-{_now_stamp()}")
-        shutil.copy2(path, bak)
-        return str(bak)
-    except Exception:
-        return None
-
-
-def _resolve(path: str, root: Optional[str] = None) -> Path:
-    """
-    Resolve path and enforce optional project root.
-    """
-    p = Path(path).resolve()
-
-    if root:
-        root_p = Path(root).resolve()
-        if not str(p).startswith(str(root_p)):
-            raise PermissionError("Path outside project root is not allowed")
-
-    return p
+    res = rt.run_command(str(script), str(tmp_project), timeout=5)
+    assert res["success"]
+    assert "hello" in res.get("stdout", "")
 
 
 # ============================================================
-# PUBLIC API
+# run_command: stderr capture
 # ============================================================
 
-def safe_write(path: str, content: str, backup: bool = False, root: Optional[str] = None) -> Dict[str, Any]:
-    """
-    Safely write a file with:
-    - atomic write
-    - optional timestamped backup
-    - optional root enforcement
-    """
-    try:
-        p = _resolve(path, root)
+def test_run_command_stderr(tmp_project):
+    rt = RunTools()
 
-        backup_path = None
-        if backup and p.exists():
-            backup_path = _create_backup(p)
+    script = tmp_project / "err.sh"
+    script.write_text("#!/bin/sh\necho error >&2\nexit 1\n", encoding="utf-8")
 
-        _atomic_write(p, content)
+    import os
+    os.chmod(script, 0o755)
 
-        return {
-            "success": True,
-            "path": str(p),
-            "bytes": len(content.encode("utf-8")),
-            "backup": backup_path,
-        }
-
-    except PermissionError as pe:
-        return {"success": False, "error": str(pe), "code": "PATH_OUTSIDE_ROOT"}
-
-    except Exception as e:
-        return {"success": False, "error": str(e), "code": "WRITE_ERROR"}
+    res = rt.run_command(str(script), str(tmp_project), timeout=5)
+    assert not res["success"]
+    assert "error" in res.get("stderr", "")
 
 
-def safe_read(path: str, root: Optional[str] = None) -> Dict[str, Any]:
-    """
-    Safe UTF‑8 read with structured output.
-    """
-    try:
-        p = _resolve(path, root)
+# ============================================================
+# run_command: timeout
+# ============================================================
 
-        if not p.exists():
-            return {"success": False, "error": "File not found", "code": "NOT_FOUND"}
+def test_run_command_timeout(tmp_project):
+    rt = RunTools()
 
-        try:
-            text = p.read_text(encoding="utf-8", errors="replace")
-            return {"success": True, "content": text, "path": str(p)}
-        except Exception as e:
-            return {"success": False, "error": str(e), "code": "READ_ERROR"}
+    script = tmp_project / "sleep.sh"
+    script.write_text("#!/bin/sh\nsleep 10\necho done\n", encoding="utf-8")
 
-    except PermissionError as pe:
-        return {"success": False, "error": str(pe), "code": "PATH_OUTSIDE_ROOT"}
+    import os
+    os.chmod(script, 0o755)
 
-    except Exception as e:
-        return {"success": False, "error": str(e), "code": "UNKNOWN"}
+    res = rt.run_command(str(script), str(tmp_project), timeout=1)
+    assert not res["success"]
+    assert "timeout" in res.get("error", "").lower()
 
 
-def safe_delete(path: str, root: Optional[str] = None) -> Dict[str, Any]:
-    """
-    Safe delete for files or directories.
-    """
-    try:
-        p = _resolve(path, root)
+# ============================================================
+# stream_command
+# ============================================================
 
-        if not p.exists():
-            return {"success": False, "error": "Path not found", "code": "NOT_FOUND"}
+@pytest.mark.asyncio
+async def test_stream_command(tmp_project):
+    rt = RunTools()
 
-        try:
-            if p.is_dir():
-                shutil.rmtree(p)
-                return {"success": True, "deleted": str(p), "type": "directory"}
-            else:
-                p.unlink()
-                return {"success": True, "deleted": str(p), "type": "file"}
+    script = tmp_project / "stream.sh"
+    script.write_text("#!/bin/sh\necho line1\necho line2\n", encoding="utf-8")
 
-        except Exception as e:
-            return {"success": False, "error": str(e), "code": "DELETE_ERROR"}
+    import os
+    os.chmod(script, 0o755)
 
-    except PermissionError as pe:
-        return {"success": False, "error": str(pe), "code": "PATH_OUTSIDE_ROOT"}
+    outputs = []
+    async for chunk in rt.stream_command(str(script), str(tmp_project), timeout=5):
+        outputs.append(chunk)
 
-    except Exception as e:
-        return {"success": False, "error": str(e), "code": "UNKNOWN"}
+    assert len(outputs) >= 2
+    assert any("line1" in c.get("stdout", "") for c in outputs)
+    assert any("line2" in c.get("stdout", "") for c in outputs)
+
+
+# ============================================================
+# Working directory safety
+# ============================================================
+
+def test_run_command_respects_cwd(tmp_project):
+    rt = RunTools()
+
+    script = tmp_project / "pwd.sh"
+    script.write_text("#!/bin/sh\npwd\n", encoding="utf-8")
+
+    import os
+    os.chmod(script, 0o755)
+
+    res = rt.run_command(str(script), str(tmp_project), timeout=5)
+    assert res["success"]
+    assert str(tmp_project) in res.get("stdout", "")
