@@ -332,8 +332,6 @@ class AssistantActions:
                     # This is not a full patch algorithm; prefer manual review.
                     patched = None
                     try:
-                        # Try to use difflib to parse hunks: create a fake diff between orig and a guessed new content
-                        # Here we attempt to extract lines starting with '+' and '-' from hunks to build a naive patched text
                         orig_lines = orig_text.splitlines(keepends=True)
                         new_lines = []
                         for h in hunks:
@@ -348,7 +346,6 @@ class AssistantActions:
                         if new_lines:
                             patched = "".join(new_lines)
                         else:
-                            # If no clear new_lines, skip applying
                             patched = None
                     except Exception:
                         patched = None
@@ -365,5 +362,243 @@ class AssistantActions:
                     results["errors"].append({"path": rel_path, "error": str(e)})
 
             return {"success": True, **results}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    # =========================================================
+    # PYTHON TOOLS
+    # =========================================================
+
+    def python_explain(self, rel_path: str, project_path: str) -> Dict[str, Any]:
+        """Return the content of a Python file for explanation."""
+        try:
+            root = _resolve_project_path(project_path)
+            target = (root / rel_path).resolve()
+
+            if not _is_within_project(root, target):
+                return {"success": False, "error": "Path outside project not allowed."}
+            if not target.exists():
+                return {"success": False, "error": "File not found."}
+
+            content = target.read_text(encoding="utf-8")
+            _log_audit(root, {"action": "python_explain", "path": rel_path})
+            return {"success": True, "path": rel_path, "content": content}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    def python_generate(self, project_path: str, rel_path: str, description: str) -> Dict[str, Any]:
+        """Create a Python file with a docstring containing the description."""
+        try:
+            root = _resolve_project_path(project_path)
+            target = (root / rel_path).resolve()
+
+            if not _is_within_project(root, target):
+                return {"success": False, "error": "Path outside project not allowed."}
+
+            content = f'"""{description}"""\n\nprint("Generated file: {rel_path}")\n'
+            _atomic_write(target, content)
+            _log_audit(root, {"action": "python_generate", "path": rel_path})
+            return {"success": True, "created": rel_path}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    def python_run(self, rel_path: str, project_path: str) -> Dict[str, Any]:
+        """Run a Python file and return stdout/stderr."""
+        try:
+            import subprocess
+
+            root = _resolve_project_path(project_path)
+            target = (root / rel_path).resolve()
+
+            if not _is_within_project(root, target):
+                return {"success": False, "error": "Path outside project not allowed."}
+            if not target.exists():
+                return {"success": False, "error": "File not found."}
+
+            proc = subprocess.Popen(
+                ["python3", str(target)],
+                cwd=str(root),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+            out, err = proc.communicate()
+
+            _log_audit(root, {"action": "python_run", "path": rel_path})
+            return {
+                "success": True,
+                "stdout": out,
+                "stderr": err,
+                "returncode": proc.returncode,
+            }
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    # =========================================================
+    # GIT TOOLS
+    # =========================================================
+
+    def git_clone(self, project_path: str, git_url: str, folder_name: str) -> Dict[str, Any]:
+        """Clone a Git repo into the project directory."""
+        try:
+            import subprocess
+
+            root = _resolve_project_path(project_path)
+            target = (root / folder_name).resolve()
+
+            if not _is_within_project(root, target):
+                return {"success": False, "error": "Clone target outside project not allowed."}
+
+            subprocess.check_call(["git", "clone", git_url, str(target)])
+
+            _log_audit(root, {"action": "git_clone", "repo": git_url, "folder": folder_name})
+            return {"success": True, "project_root": str(target)}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    # =========================================================
+    # REPO ANALYZER + REPO UI
+    # =========================================================
+
+    def analyze_repo(self, project_path: str, rel_folder: str) -> Dict[str, Any]:
+        """Analyze a repo and detect languages, entry points, and structure."""
+        try:
+            root = _resolve_project_path(project_path)
+            folder = (root / rel_folder).resolve()
+
+            if not _is_within_project(root, folder):
+                return {"success": False, "error": "Path outside project not allowed."}
+            if not folder.exists():
+                return {"success": False, "error": "Folder not found."}
+
+            files = [str(p.relative_to(folder)) for p in folder.rglob("*") if p.is_file()]
+
+            meta = {
+                "files": files,
+                "has_python": any(f.endswith(".py") for f in files),
+                "has_node": any(f.endswith("package.json") for f in files),
+                "has_worker": any(f.endswith("worker.js") for f in files),
+                "has_requirements": any(f.endswith("requirements.txt") for f in files),
+                "entry_points": [
+                    f
+                    for f in files
+                    if f.endswith(("main.py", "server.py", "app.py", "index.js", "worker.js"))
+                ],
+            }
+
+            _log_audit(root, {"action": "analyze_repo", "folder": rel_folder})
+            return {"success": True, "meta": meta}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    def build_repo_ui(self, project_path: str, rel_folder: str) -> Dict[str, Any]:
+        """
+        Build a simple UI schema for a repo based on its structure.
+        """
+        try:
+            analysis = self.analyze_repo(project_path, rel_folder)
+            if not analysis.get("success"):
+                return analysis
+
+            meta = analysis["meta"]
+            panels: List[Dict[str, Any]] = []
+
+            panels.append(
+                {
+                    "id": "repo-readme",
+                    "title": "README",
+                    "type": "markdown-viewer",
+                    "file": "README.md",
+                }
+            )
+
+            panels.append(
+                {
+                    "id": "repo-files",
+                    "title": "Files",
+                    "type": "file-tree",
+                    "root": rel_folder,
+                }
+            )
+
+            if meta["has_python"]:
+                py_entries = [e for e in meta["entry_points"] if e.endswith(".py")]
+                panels.append(
+                    {
+                        "id": "repo-python-runner",
+                        "title": "Python Runner",
+                        "type": "command-runner",
+                        "commands": [
+                            {"label": f"Run {e}", "command": f"python3 {e}"} for e in py_entries
+                        ]
+                        or [{"label": "Run main.py", "command": "python3 main.py"}],
+                    }
+                )
+
+            if meta["has_node"]:
+                panels.append(
+                    {
+                        "id": "repo-node-scripts",
+                        "title": "Node Scripts",
+                        "type": "npm-scripts",
+                        "file": "package.json",
+                    }
+                )
+
+            if meta["has_worker"]:
+                panels.append(
+                    {
+                        "id": "repo-worker",
+                        "title": "Cloudflare Worker",
+                        "type": "worker-runner",
+                        "entry": "worker.js",
+                    }
+                )
+
+            root = _resolve_project_path(project_path)
+            _log_audit(root, {"action": "build_repo_ui", "folder": rel_folder})
+            return {"success": True, "panels": panels, "meta": meta}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    # =========================================================
+    # USB TOOLS
+    # =========================================================
+
+    def usb_list(self) -> Dict[str, Any]:
+        """List mounted USB drives."""
+        try:
+            mounts = []
+            for base in (Path("/media"), Path("/mnt"), Path("/Volumes")):
+                if base.exists():
+                    for d in base.iterdir():
+                        if d.is_dir():
+                            mounts.append({"path": str(d), "label": d.name})
+            return {"success": True, "mounts": mounts}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    def usb_export(self, project_path: str, rel_folder: str, usb_path: str) -> Dict[str, Any]:
+        """Export a project or repo folder to a USB drive."""
+        try:
+            src_root = _resolve_project_path(project_path)
+            src = (src_root / rel_folder).resolve()
+            dst_root = Path(usb_path)
+            dst = dst_root / src.name
+
+            if not _is_within_project(src_root, src):
+                return {"success": False, "error": "Source outside project not allowed."}
+            if not src.exists():
+                return {"success": False, "error": "Source folder not found."}
+            if not dst_root.exists():
+                return {"success": False, "error": "USB path not found."}
+
+            if dst.exists():
+                shutil.rmtree(dst)
+
+            shutil.copytree(src, dst)
+
+            _log_audit(src_root, {"action": "usb_export", "src": rel_folder, "dst": str(dst)})
+            return {"success": True, "exported_to": str(dst)}
         except Exception as e:
             return {"success": False, "error": str(e)}
