@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from generator.orchestrator import run_universal_generator
 from assistant import AIAgent
 
-# Optional modular imports (fall back if missing)
+# Modular imports
 try:
     from project_manager import list_projects, create_project, delete_project, duplicate_project, rename_project
 except Exception:
@@ -29,17 +29,18 @@ try:
 except Exception:
     terminal_router = None
 
+# NEW: MCU API router
 try:
-    from microcontroller.engine import generate_firmware, flash_firmware
+    from microcontroller.api import router as mcu_router
 except Exception:
-    generate_firmware = lambda project_name, prompt: {"success": False, "error": "microcontroller engine not installed"}
-    flash_firmware = lambda project_name, port=None: {"success": False, "error": "microcontroller engine not installed"}
+    mcu_router = None
 
 
 app = FastAPI()
 PROJECTS_ROOT = Path("projects")
 PROJECTS_ROOT.mkdir(parents=True, exist_ok=True)
 
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -47,7 +48,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Serve static files (CSS + JS + assets)
+# Static files (CSS, JS, MCU Lab, assets)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
@@ -99,18 +100,8 @@ class TerminalRequest(BaseModel):
     command: str
 
 
-class MCURequest(BaseModel):
-    project_name: str | None = None
-    prompt: str
-
-
-class MCUFlashRequest(BaseModel):
-    project_name: str
-    port: str | None = None
-
-
 # -----------------------------
-# CORE ENDPOINTS
+# GENERATOR
 # -----------------------------
 @app.post("/api/generator/run")
 def api_generator_run(req: GeneratorRequest):
@@ -128,6 +119,9 @@ def api_generator_run(req: GeneratorRequest):
     }
 
 
+# -----------------------------
+# ASSISTANT
+# -----------------------------
 @app.post("/api/assistant/run")
 def api_assistant_run(req: AssistantRequest):
     project_path = PROJECTS_ROOT / req.project_name
@@ -139,6 +133,9 @@ def api_assistant_run(req: AssistantRequest):
     return result
 
 
+# -----------------------------
+# PREVIEW
+# -----------------------------
 @app.get("/preview/{project_name}", response_class=HTMLResponse)
 def preview_project(project_name: str):
     project_path = PROJECTS_ROOT / project_name
@@ -152,13 +149,12 @@ def preview_project(project_name: str):
 
 
 # -----------------------------
-# PROJECT MANAGER ENDPOINTS
+# PROJECT MANAGER
 # -----------------------------
 @app.get("/api/projects")
 def api_list_projects():
     try:
-        projects = list_projects()
-        return {"success": True, "projects": projects}
+        return {"success": True, "projects": list_projects()}
     except Exception as e:
         return {"success": False, "error": str(e)}
 
@@ -196,11 +192,12 @@ def api_rename_project(payload: ProjectRenameRequest):
 
 
 # -----------------------------
-# FILES / FILETREE ROUTER (modular or inline)
+# FILES ROUTER
 # -----------------------------
-if files_router is not None:
+if files_router:
     app.include_router(files_router, prefix="/api")
 else:
+    # fallback inline implementation
     @app.get("/api/files/tree/{project_name}")
     def api_files_tree(project_name: str):
         project_path = PROJECTS_ROOT / project_name
@@ -217,17 +214,15 @@ else:
                     items.append({"type": "file", "name": p.name, "path": rel})
             return items
 
-        tree = build_tree(project_path, project_path)
-        return {"success": True, "tree": tree}
+        return {"success": True, "tree": build_tree(project_path, project_path)}
 
     @app.post("/api/files/read")
     def api_files_read(payload: FileReadRequest):
         project_path = PROJECTS_ROOT / payload.project_name
         file_path = project_path / payload.path
-        if not file_path.exists() or not file_path.is_file():
+        if not file_path.exists():
             raise HTTPException(status_code=404, detail="File not found")
-        content = file_path.read_text(encoding="utf-8")
-        return {"success": True, "content": content}
+        return {"success": True, "content": file_path.read_text(encoding="utf-8")}
 
     @app.post("/api/files/write")
     def api_files_write(payload: FileWriteRequest):
@@ -235,7 +230,7 @@ else:
         file_path = project_path / payload.path
         file_path.parent.mkdir(parents=True, exist_ok=True)
         file_path.write_text(payload.content, encoding="utf-8")
-        return {"success": True, "path": payload.path}
+        return {"success": True}
 
     @app.post("/api/files/delete")
     def api_files_delete(payload: FileReadRequest):
@@ -252,9 +247,9 @@ else:
 
 
 # -----------------------------
-# TERMINAL ROUTER (modular or fallback)
+# TERMINAL ROUTER
 # -----------------------------
-if terminal_router is not None:
+if terminal_router:
     app.include_router(terminal_router, prefix="/api")
 else:
     @app.post("/api/terminal/run")
@@ -263,29 +258,15 @@ else:
         if not project_path.exists():
             raise HTTPException(status_code=404, detail="Project not found")
 
-        # Fallback: use AIAgent.run with a "run command" prefix
         agent = AIAgent()
-        prompt = f"run command: {req.command}"
-        result = agent.run(prompt, str(project_path))
+        result = agent.run(f"run command: {req.command}", str(project_path))
         return result
 
 
 # -----------------------------
-# MICROCONTROLLER ENDPOINTS
+# MCU ROUTER (NEW)
 # -----------------------------
-@app.post("/api/microcontroller/generate")
-def api_mcu_generate(payload: MCURequest):
-    project_name = payload.project_name or "mcu-sandbox"
-    prompt = payload.prompt or ""
-    try:
-        return generate_firmware(project_name, prompt)
-    except Exception as e:
-        return {"success": False, "error": str(e)}
-
-
-@app.post("/api/microcontroller/flash")
-def api_mcu_flash(payload: MCUFlashRequest):
-    try:
-        return flash_firmware(payload.project_name, payload.port)
-    except Exception as e:
-        return {"success": False, "error": str(e)}
+if mcu_router:
+    app.include_router(mcu_router, prefix="/mcu")
+else:
+    raise RuntimeError("microcontroller.api router missing — MCU system not installed")
