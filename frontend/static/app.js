@@ -1,4 +1,4 @@
-// static/app.js — FINAL VERSION FOR NEW LAYOUT
+// static/app.js — FINAL REWRITE WITH AI DRAWER + FLOAT BUTTON
 
 let currentProjectName = null;
 let currentFilePath = null;
@@ -7,11 +7,7 @@ let currentFilePath = null;
 function detectBackend() {
   const saved = localStorage.getItem("backend_url");
   if (saved) return saved;
-
-  if (window.location.hostname !== "localhost") {
-    return window.location.origin;
-  }
-
+  if (window.location.hostname !== "localhost") return window.location.origin;
   return "http://localhost:8000";
 }
 
@@ -23,11 +19,12 @@ document.addEventListener("DOMContentLoaded", () => {
   bindDockTabs();
   bindTerminal();
   bindAI();
+  bindAIFloatButton();
   loadHome();
 });
 
 /* ---------------------------------------------------------
-   SIDEBAR → loads panels into #main-content
+   SIDEBAR
 --------------------------------------------------------- */
 function bindSidebar() {
   document.querySelectorAll(".pg-nav-btn").forEach((btn) => {
@@ -41,11 +38,15 @@ function loadPanel(panel) {
     case "filetree": renderFileTree(); break;
     case "generator": renderGenerator(); break;
     case "microcontroller": renderMCU(); break;
-    case "cloudflare": $("main-content").innerHTML = `<h2>Cloudflare</h2><p class="muted">Coming soon.</p>`; break;
-    case "capabilities": renderCapabilities(); break;
+    case "cloudflare": loadPage("cloudflare.html"); break;
+    case "capabilities": loadPage("capabilities.html"); break;
     case "settings": renderSettings(); break;
     default: loadHome();
   }
+}
+
+function loadPage(page) {
+  $("main-content").innerHTML = `<iframe src="${page}" style="width:100%;height:80vh;border:0;"></iframe>`;
 }
 
 function loadHome() {
@@ -56,7 +57,7 @@ function loadHome() {
 }
 
 /* ---------------------------------------------------------
-   DOCK TABS
+   DOCK TABS (Terminal / Logs / Errors)
 --------------------------------------------------------- */
 function bindDockTabs() {
   const tabs = document.querySelectorAll(".pg-dock-tab");
@@ -97,7 +98,7 @@ function bindTerminal() {
 
     out.textContent = JSON.stringify(res, null, 2);
 
-    if (res.error) $("dock-errors").textContent = res.error;
+    if (res.error) $("errors-output").textContent = res.error;
   });
 
   $("terminal-clear").addEventListener("click", () => {
@@ -106,7 +107,7 @@ function bindTerminal() {
 }
 
 /* ---------------------------------------------------------
-   AI ASSISTANT
+   AI ASSISTANT (Drawer)
 --------------------------------------------------------- */
 function bindAI() {
   $("ai-send").addEventListener("click", async () => {
@@ -130,6 +131,20 @@ function bindAI() {
 }
 
 /* ---------------------------------------------------------
+   FLOATING AI BUTTON
+--------------------------------------------------------- */
+function bindAIFloatButton() {
+  const btn = document.createElement("button");
+  btn.id = "ai-float-btn";
+  btn.textContent = "AI";
+  document.body.appendChild(btn);
+
+  btn.addEventListener("click", () => {
+    document.body.classList.toggle("ai-open");
+  });
+}
+
+/* ---------------------------------------------------------
    GENERATOR
 --------------------------------------------------------- */
 function renderGenerator() {
@@ -141,7 +156,7 @@ function renderGenerator() {
 
   $("generator-run").addEventListener("click", async () => {
     const prompt = $("generator-input").value.trim();
-    if (!prompt) return alert("Prompt empty");
+    if (!prompt) return;
 
     const projectName = `project-${Date.now()}`;
     currentProjectName = projectName;
@@ -158,7 +173,7 @@ function renderGenerator() {
       loadPreview(projectName);
       message("Generated " + projectName);
     } else {
-      $("dock-errors").textContent = res.error || "Generation failed.";
+      $("errors-output").textContent = res.error || "Generation failed.";
     }
   });
 }
@@ -248,11 +263,9 @@ async function loadTree() {
       li.textContent = n.name;
       li.style.cursor = "pointer";
 
-      if (n.type === "file") {
-        li.addEventListener("click", () => openFile(n.path));
-      }
-
+      if (n.type === "file") li.addEventListener("click", () => openFile(n.path));
       if (n.children) li.appendChild(renderNodes(n.children));
+
       ul.appendChild(li);
     });
     return ul;
@@ -334,23 +347,6 @@ function renderMCU() {
 }
 
 /* ---------------------------------------------------------
-   CAPABILITIES
---------------------------------------------------------- */
-function renderCapabilities() {
-  $("main-content").innerHTML = `
-    <h2>Capabilities</h2>
-    <ul>
-      <li>App Generator</li>
-      <li>AI Assistant</li>
-      <li>File Engine</li>
-      <li>Terminal Engine</li>
-      <li>Microcontroller Engine</li>
-      <li>Breadboard Lab</li>
-    </ul>
-  `;
-}
-
-/* ---------------------------------------------------------
    SETTINGS
 --------------------------------------------------------- */
 function renderSettings() {
@@ -362,7 +358,7 @@ function renderSettings() {
 
   $("backend-save").addEventListener("click", () => {
     const url = $("backend-url").value.trim();
-    if (!url) return alert("Enter URL");
+    if (!url) return;
 
     localStorage.setItem("backend_url", url);
     API_BASE = url;
