@@ -1,69 +1,149 @@
-from fastapi import APIRouter
+# backend/assistant/ai_panel_api.py
+"""
+AI Panel Pro Router (Wiring + Code + Image)
+-------------------------------------------
+
+Hardened + policy-driven + audit-logged + memory-aware.
+
+This router powers:
+- MCU wiring assistant
+- MCU firmware/code generator
+- Image generator (style + resolution)
+"""
+
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Dict, List
 import uuid
 
+from assistant.policy import redact_dict
+from assistant.audit_logger import AuditLogger
+
 router = APIRouter()
 
-# In-memory conversation store (swap to DB/Redis later)
+# In-memory conversation store (swap to Redis/DB later)
 CONVERSATIONS: Dict[str, List[Dict[str, str]]] = {}
 
+audit = AuditLogger()
+
+
+# ============================================================
+# MODELS
+# ============================================================
+
 class AIRequest(BaseModel):
-  prompt: str
-  session_id: str
+    prompt: str
+    session_id: str
+
 
 class AIImageRequest(AIRequest):
-  style: str
-  resolution: str
+    style: str
+    resolution: str
+
+
+# ============================================================
+# MEMORY HELPERS
+# ============================================================
 
 def get_history(session_id: str):
-  return CONVERSATIONS.get(session_id, [])
+    return CONVERSATIONS.get(session_id, [])
+
 
 def append_history(session_id: str, role: str, content: str):
-  CONVERSATIONS.setdefault(session_id, []).append({"role": role, "content": content})
-  # keep last 30 messages
-  CONVERSATIONS[session_id] = CONVERSATIONS[session_id][-30:]
+    CONVERSATIONS.setdefault(session_id, []).append({"role": role, "content": content})
+    CONVERSATIONS[session_id] = CONVERSATIONS[session_id][-30:]
+
+
+# ============================================================
+# LLM CALL STUBS (replace with your engines)
+# ============================================================
+
+def call_wiring_llm(messages: List[Dict[str, str]]) -> str:
+    """
+    Replace with your real wiring model (Boardwalk MCU Wiring Expert).
+    """
+    return "[WIRING RESPONSE HERE]"
+
+
+def call_code_llm(messages: List[Dict[str, str]]) -> str:
+    """
+    Replace with your real firmware/code generator.
+    """
+    return "[CODE RESPONSE HERE]"
+
+
+def call_image_engine(prompt: str, style: str, resolution: str) -> str:
+    """
+    Replace with SDXL / OpenAI / Flux / local model.
+    """
+    return f"/static/generated/{uuid.uuid4()}.png"
+
+
+# ============================================================
+# ROUTES
+# ============================================================
 
 @router.post("/ai/wiring")
 async def ai_wiring(req: AIRequest):
-  history = get_history(req.session_id)
-  append_history(req.session_id, "user", req.prompt)
+    session = req.session_id
+    append_history(session, "user", f"[WIRING] {req.prompt}")
 
-  system = "You are an MCU wiring expert. Output JSON wiring plans and clear explanations."
-  messages = [{"role": "system", "content": system}] + history
+    system = (
+        "You are Boardwalk MCU Wiring Expert. "
+        "You output JSON wiring plans, pin mappings, diagrams, and clear explanations. "
+        "Be precise, deterministic, and safe."
+    )
 
-  # TODO: call your LLM here
-  text = "[WIRING RESPONSE HERE]"  # replace with real model call
+    messages = [{"role": "system", "content": system}] + get_history(session)
 
-  append_history(req.session_id, "assistant", text)
-  return {"text": text}
+    text = call_wiring_llm(messages)
+
+    append_history(session, "assistant", text)
+    audit.log("ai_wiring", {"session": session, "prompt": req.prompt, "response": text})
+
+    return {"success": True, "text": text}
+
 
 @router.post("/ai/code")
 async def ai_code(req: AIRequest):
-  history = get_history(req.session_id)
-  append_history(req.session_id, "user", req.prompt)
+    session = req.session_id
+    append_history(session, "user", f"[CODE] {req.prompt}")
 
-  system = "You generate MCU firmware code based on wiring and requirements."
-  messages = [{"role": "system", "content": system}] + history
+    system = (
+        "You are Boardwalk Firmware Generator. "
+        "You generate MCU firmware code based on wiring, requirements, and constraints. "
+        "Output deterministic, production-grade code."
+    )
 
-  # TODO: call your LLM here
-  text = "[CODE RESPONSE HERE]"
+    messages = [{"role": "system", "content": system}] + get_history(session)
 
-  append_history(req.session_id, "assistant", text)
-  return {"text": text}
+    text = call_code_llm(messages)
+
+    append_history(session, "assistant", text)
+    audit.log("ai_code", {"session": session, "prompt": req.prompt, "response": text})
+
+    return {"success": True, "text": text}
+
 
 @router.post("/ai/image")
 async def ai_image(req: AIImageRequest):
-  history = get_history(req.session_id)
-  append_history(req.session_id, "user", f"IMAGE: {req.prompt} | style={req.style} | res={req.resolution}")
+    session = req.session_id
+    append_history(
+        session,
+        "user",
+        f"[IMAGE] {req.prompt} | style={req.style} | res={req.resolution}",
+    )
 
-  # TODO: call your image model API here (Stable Diffusion / OpenAI / etc.)
-  # Example pseudo:
-  # image_url = generate_image(req.prompt, style=req.style, resolution=req.resolution)
+    image_url = call_image_engine(req.prompt, req.style, req.resolution)
+    desc = f"Generated image in style '{req.style}' at {req.resolution}."
 
-  image_url = f"/static/generated/{uuid.uuid4()}.png"  # placeholder path
+    append_history(session, "assistant", desc)
+    audit.log("ai_image", {
+        "session": session,
+        "prompt": req.prompt,
+        "style": req.style,
+        "resolution": req.resolution,
+        "image_url": image_url,
+    })
 
-  desc = f"Generated image in style '{req.style}' at {req.resolution}."
-  append_history(req.session_id, "assistant", desc)
-
-  return {"image_url": image_url, "description": desc}
+    return {"success": True, "image_url": image_url, "description": desc}
