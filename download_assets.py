@@ -1,12 +1,9 @@
 # download_assets.py
-# Downloads all MCU Lab images into /static/breadboard/
+# Downloads MCU Lab images into /static/breadboard/
 
 import os
 import urllib.request
 
-# -----------------------------
-# TARGET FOLDERS
-# -----------------------------
 BASE = "static/breadboard"
 BOARDS = f"{BASE}/boards"
 COMP = f"{BASE}/components"
@@ -15,10 +12,9 @@ os.makedirs(BOARDS, exist_ok=True)
 os.makedirs(COMP, exist_ok=True)
 
 # -----------------------------
-# IMAGE URLS (REALISTIC PHOTOS)
-# These are stable, high-quality PNGs.
+# CORE, HIGH-CONFIDENCE ASSETS
 # -----------------------------
-IMAGES = {
+CORE_IMAGES = {
     # Boards
     f"{BOARDS}/esp32-devkit-v1.png":
         "https://raw.githubusercontent.com/wokwi/wokwi-assets/main/boards/esp32-devkit-v1.png",
@@ -29,7 +25,7 @@ IMAGES = {
     f"{BOARDS}/esp8266.png":
         "https://raw.githubusercontent.com/wokwi/wokwi-assets/main/boards/esp8266-nodemcu.png",
 
-    # Components
+    # Basic components
     f"{COMP}/led.png":
         "https://raw.githubusercontent.com/wokwi/wokwi-assets/main/components/led.png",
 
@@ -39,6 +35,7 @@ IMAGES = {
     f"{COMP}/button.png":
         "https://raw.githubusercontent.com/wokwi/wokwi-assets/main/components/pushbutton.png",
 
+    # Sensors / modules
     f"{COMP}/dht11.png":
         "https://raw.githubusercontent.com/wokwi/wokwi-assets/main/components/dht11.png",
 
@@ -59,16 +56,34 @@ IMAGES = {
 }
 
 # -----------------------------
-# DOWNLOAD
+# EXTENSION HOOK:
+# Add more modules here as you decide to support them.
+# Just follow the same pattern: path -> URL.
 # -----------------------------
+EXTRA_IMAGES = {
+    # Examples (uncomment / adjust as you add support):
+    # f"{COMP}/servo.png":
+    #     "https://raw.githubusercontent.com/wokwi/wokwi-assets/main/components/servo.png",
+    # f"{COMP}/relay.png":
+    #     "https://raw.githubusercontent.com/wokwi/wokwi-assets/main/components/relay-module.png",
+    # f"{COMP}/laser.png":
+    #     "<YOUR_LASER_MODULE_IMAGE_URL>",
+    # f"{COMP}/microwave-radar.png":
+    #     "<YOUR_MICROWAVE_RADAR_SENSOR_IMAGE_URL>",
+}
+
+IMAGES = {}
+IMAGES.update(CORE_IMAGES)
+IMAGES.update(EXTRA_IMAGES)
+
 print("\nDownloading MCU Lab assets...\n")
 
 for path, url in IMAGES.items():
-    print(f"Downloading {path}...")
+    print(f"Downloading {path} from {url}")
     try:
         urllib.request.urlretrieve(url, path)
         print("  ✔ Success")
     except Exception as e:
         print(f"  ✖ Failed: {e}")
 
-print("\nAll done!\n")
+print("\nDone.\n")
