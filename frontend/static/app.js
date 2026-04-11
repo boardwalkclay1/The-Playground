@@ -4,6 +4,7 @@
 let currentProjectName = null;
 let currentFilePath = null;
 
+const API_BASE = "http://localhost:8000";   // <— FIXED: backend lives here
 const $ = (id) => document.getElementById(id);
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -16,7 +17,7 @@ document.addEventListener("DOMContentLoaded", () => {
 /* ---------------- Helpers ---------------- */
 async function apiGet(path) {
   try {
-    const res = await fetch(path);
+    const res = await fetch(API_BASE + path);
     return await res.json();
   } catch (err) {
     return { success: false, error: err.message };
@@ -25,7 +26,7 @@ async function apiGet(path) {
 
 async function apiPost(path, body) {
   try {
-    const res = await fetch(path, {
+    const res = await fetch(API_BASE + path, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body || {}),
@@ -516,7 +517,7 @@ function loadPreview(projectName) {
   panel.innerHTML = `<h3>Preview</h3>`;
   const iframe = document.createElement("iframe");
   iframe.className = "preview-frame";
-  iframe.src = `/preview/${encodeURIComponent(projectName)}`;
+  iframe.src = `${API_BASE}/preview/${encodeURIComponent(projectName)}`;
   iframe.style.width = "100%";
   iframe.style.height = "600px";
 
