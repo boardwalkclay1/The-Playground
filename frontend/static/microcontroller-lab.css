@@ -1,0 +1,153 @@
+/* MCU LAB — Cinematic Dark Theme */
+
+body {
+  margin: 0;
+  background: #05060a;
+  color: #f5f5f7;
+  font-family: system-ui, sans-serif;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+/* TOP BAR */
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 20px;
+  background: #0b0f1a;
+  border-bottom: 1px solid #1f2433;
+}
+
+.topbar .title {
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.topbar .subtitle {
+  font-size: 12px;
+  opacity: 0.6;
+}
+
+.topbar .right {
+  display: flex;
+  gap: 10px;
+}
+
+.bubble {
+  background: #0f1522;
+  border: 1px solid #2b3148;
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: #f5f5f7;
+}
+
+/* BUTTONS */
+.btn {
+  background: #1f2937;
+  border: 1px solid #374151;
+  border-radius: 8px;
+  padding: 8px 14px;
+  color: #f5f5f7;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.btn:hover {
+  background: #2b3547;
+}
+
+.btn.primary {
+  background: #2563eb;
+  border-color: #1d4ed8;
+}
+
+.btn.primary:hover {
+  background: #1d4ed8;
+}
+
+/* MAIN GRID */
+.grid {
+  display: grid;
+  grid-template-columns: 260px 1fr 320px;
+  height: calc(100vh - 60px);
+}
+
+/* PANELS */
+.panel {
+  padding: 16px;
+  overflow-y: auto;
+  border-right: 1px solid #1f2433;
+}
+
+.center-panel {
+  border-right: 1px solid #1f2433;
+}
+
+/* COMPONENT PALETTE */
+.palette {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.comp {
+  background: #0f1522;
+  border: 1px solid #2b3148;
+  padding: 8px;
+  border-radius: 6px;
+  cursor: grab;
+  text-align: center;
+}
+
+.comp:hover {
+  background: #1a2235;
+}
+
+/* CANVAS */
+.canvas {
+  width: 100%;
+  height: 100%;
+  background: #0b0f1a;
+  border: 1px solid #1f2433;
+  border-radius: 8px;
+  position: relative;
+}
+
+/* NETLIST */
+.netlist {
+  width: 100%;
+  height: 180px;
+  background: #0b0f1a;
+  border: 1px solid #2b3148;
+  border-radius: 8px;
+  padding: 10px;
+  color: #f5f5f7;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12px;
+}
+
+/* SIMULATION OUTPUT */
+.sim-output {
+  background: #0b0f1a;
+  border: 1px solid #2b3148;
+  border-radius: 8px;
+  padding: 10px;
+  min-height: 120px;
+  font-size: 12px;
+}
+
+/* AI OUTPUT */
+.ai-output {
+  background: #0b0f1a;
+  border: 1px solid #2b3148;
+  border-radius: 8px;
+  padding: 10px;
+  min-height: 120px;
+  font-size: 12px;
+  white-space: pre-wrap;
+}
