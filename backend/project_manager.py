@@ -1,13 +1,73 @@
 # backend/project_manager.py
+"""
+Upgraded project manager for Playground Studio.
+
+Features:
+- Create / list / delete / duplicate / rename projects
+- Safe name normalization
+- Minimal project scaffolding (index.html, README.md, metadata.json)
+- Optional git initialization for each project
+- Backups on delete (projects/backups/<timestamp>-<project>.zip)
+- Robust error handling and clear return payloads
+"""
+
 from pathlib import Path
 import shutil
 import uuid
+import json
+import subprocess
+from datetime import datetime
+from typing import Dict, List, Any
 
-PROJECTS_ROOT = Path("projects")
+ROOT = Path.cwd()
+PROJECTS_ROOT = ROOT / "projects"
+BACKUPS_ROOT = PROJECTS_ROOT / "backups"
 PROJECTS_ROOT.mkdir(parents=True, exist_ok=True)
+BACKUPS_ROOT.mkdir(parents=True, exist_ok=True)
 
 
-def list_projects():
+def _safe_name(name: str) -> str:
+    if not name or not name.strip():
+        return f"project-{uuid.uuid4().hex[:8]}"
+    # basic sanitization: replace spaces with dashes and remove problematic chars
+    s = name.strip().replace(" ", "-")
+    # keep alnum, dash, underscore, dot
+    s = "".join(c for c in s if c.isalnum() or c in "-_.")
+    if not s:
+        return f"project-{uuid.uuid4().hex[:8]}"
+    return s
+
+
+def _init_git(project_path: Path) -> Dict[str, Any]:
+    """
+    Initialize a git repo in the project folder if git is available.
+    Returns a dict with status info.
+    """
+    try:
+        # check git availability
+        subprocess.run(["git", "--version"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except Exception:
+        return {"git": False, "message": "git not available on PATH"}
+
+    try:
+        # run git init and initial commit
+        subprocess.run(["git", "init"], cwd=str(project_path), check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(["git", "add", "."], cwd=str(project_path), check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(["git", "commit", "-m", "Initial commit by Playground Studio"], cwd=str(project_path), check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return {"git": True, "message": "git initialized and initial commit created"}
+    except Exception as e:
+        return {"git": False, "message": f"git init failed: {e}"}
+
+
+def _write_metadata(project_path: Path, metadata: Dict[str, Any]) -> None:
+    meta_path = project_path / "metadata.json"
+    meta_path.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
+
+
+def list_projects() -> List[str]:
+    """
+    Return a sorted list of project names.
+    """
     projects = []
     for p in sorted(PROJECTS_ROOT.iterdir(), key=lambda x: x.name):
         if p.is_dir():
@@ -15,50 +75,181 @@ def list_projects():
     return projects
 
 
-def create_project(name: str):
-    safe_name = name.strip() or f"project-{uuid.uuid4().hex[:8]}"
-    project_path = PROJECTS_ROOT / safe_name
-    if project_path.exists():
-        return {"success": False, "error": "Project already exists"}
-    project_path.mkdir(parents=True, exist_ok=True)
-    # create a minimal index.html so preview works
-    (project_path / "index.html").write_text(
-        "<!doctype html><html><head><meta charset='utf-8'><title>"
-        + safe_name
-        + "</title></head><body><h1>"
-        + safe_name
-        + "</h1></body></html>",
-        encoding="utf-8",
-    )
-    return {"success": True, "project": safe_name}
-
-
-def delete_project(name: str):
+def get_project_info(name: str) -> Dict[str, Any]:
+    """
+    Return basic metadata for a project if it exists.
+    """
     project_path = PROJECTS_ROOT / name
-    if not project_path.exists():
+    if not project_path.exists() or not project_path.is_dir():
         return {"success": False, "error": "Project not found"}
-    shutil.rmtree(project_path)
-    return {"success": True}
+    meta_file = project_path / "metadata.json"
+    metadata = {}
+    if meta_file.exists():
+        try:
+            metadata = json.loads(meta_file.read_text(encoding="utf-8"))
+        except Exception:
+            metadata = {}
+    # basic filesystem info
+    files = [p.relative_to(project_path).as_posix() for p in project_path.rglob("*") if p.is_file()]
+    return {"success": True, "project": name, "metadata": metadata, "files": files}
 
 
-def duplicate_project(name: str, new_name: str = None):
-    src = PROJECTS_ROOT / name
-    if not src.exists():
-        return {"success": False, "error": "Source project not found"}
-    dest_name = new_name or f"{name}-copy-{uuid.uuid4().hex[:6]}"
-    dest = PROJECTS_ROOT / dest_name
-    if dest.exists():
-        return {"success": False, "error": "Destination already exists"}
-    shutil.copytree(src, dest)
-    return {"success": True, "project": dest_name}
+def create_project(name: str, init_git: bool = True, template: str | None = None) -> Dict[str, Any]:
+    """
+    Create a new project with minimal scaffolding.
+    - name: desired project name (sanitized)
+    - init_git: whether to attempt `git init` (if git available)
+    - template: optional template type (not implemented fully; placeholder)
+    """
+    try:
+        safe = _safe_name(name)
+        project_path = PROJECTS_ROOT / safe
+        if project_path.exists():
+            return {"success": False, "error": "Project already exists", "project": safe}
+
+        project_path.mkdir(parents=True, exist_ok=False)
+
+        # minimal index.html
+        index_html = f"""<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>{safe}</title>
+  </head>
+  <body>
+    <h1>{safe}</h1>
+    <p>Generated by Playground Studio</p>
+  </body>
+</html>
+"""
+        (project_path / "index.html").write_text(index_html, encoding="utf-8")
+
+        # README
+        readme = f"# {safe}\n\nCreated by Playground Studio on {datetime.utcnow().isoformat()}Z\n"
+        (project_path / "README.md").write_text(readme, encoding="utf-8")
+
+        # metadata
+        metadata = {
+            "name": safe,
+            "created_at": datetime.utcnow().isoformat() + "Z",
+            "template": template or "minimal",
+            "playground_version": "1.0",
+        }
+        _write_metadata(project_path, metadata)
+
+        git_info = {}
+        if init_git:
+            git_info = _init_git(project_path)
+
+        return {"success": True, "project": safe, "git": git_info}
+    except Exception as e:
+        # cleanup on failure
+        try:
+            if 'project_path' in locals() and project_path.exists():
+                shutil.rmtree(project_path)
+        except Exception:
+            pass
+        return {"success": False, "error": str(e)}
 
 
-def rename_project(old_name: str, new_name: str):
-    src = PROJECTS_ROOT / old_name
-    dest = PROJECTS_ROOT / new_name
-    if not src.exists():
-        return {"success": False, "error": "Source project not found"}
-    if dest.exists():
-        return {"success": False, "error": "Destination already exists"}
-    src.rename(dest)
-    return {"success": True, "project": new_name}
+def delete_project(name: str, backup: bool = True) -> Dict[str, Any]:
+    """
+    Delete a project. If backup=True, create a zip backup under projects/backups/.
+    """
+    try:
+        project_path = PROJECTS_ROOT / name
+        if not project_path.exists():
+            return {"success": False, "error": "Project not found"}
+
+        backup_path = None
+        if backup:
+            ts = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+            zip_name = f"{name}-{ts}.zip"
+            backup_path = BACKUPS_ROOT / zip_name
+            shutil.make_archive(str(backup_path.with_suffix("")), "zip", root_dir=str(project_path))
+            # make_archive appends .zip automatically; backup_path already has .zip
+            # ensure file exists
+            if not backup_path.exists():
+                # fallback: try to move created file
+                created = Path(str(backup_path.with_suffix("")) + ".zip")
+                if created.exists():
+                    created.rename(backup_path)
+
+        shutil.rmtree(project_path)
+        return {"success": True, "project": name, "backup": str(backup_path) if backup_path else None}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+def duplicate_project(name: str, new_name: str | None = None, init_git: bool = False) -> Dict[str, Any]:
+    """
+    Duplicate an existing project. Optionally initialize git in the duplicate.
+    """
+    try:
+        src = PROJECTS_ROOT / name
+        if not src.exists():
+            return {"success": False, "error": "Source project not found"}
+
+        dest_name = _safe_name(new_name or f"{name}-copy-{uuid.uuid4().hex[:6]}")
+        dest = PROJECTS_ROOT / dest_name
+        if dest.exists():
+            return {"success": False, "error": "Destination already exists"}
+
+        shutil.copytree(src, dest)
+
+        # update metadata in duplicate
+        meta = {}
+        meta_file = dest / "metadata.json"
+        if meta_file.exists():
+            try:
+                meta = json.loads(meta_file.read_text(encoding="utf-8"))
+            except Exception:
+                meta = {}
+        meta.update({"duplicated_from": name, "duplicated_at": datetime.utcnow().isoformat() + "Z"})
+        _write_metadata(dest, meta)
+
+        git_info = {}
+        if init_git:
+            git_info = _init_git(dest)
+
+        return {"success": True, "project": dest_name, "git": git_info}
+    except Exception as e:
+        # cleanup on failure
+        try:
+            if 'dest' in locals() and dest.exists():
+                shutil.rmtree(dest)
+        except Exception:
+            pass
+        return {"success": False, "error": str(e)}
+
+
+def rename_project(old_name: str, new_name: str) -> Dict[str, Any]:
+    """
+    Rename a project directory and update metadata.
+    """
+    try:
+        src = PROJECTS_ROOT / old_name
+        if not src.exists():
+            return {"success": False, "error": "Source project not found"}
+
+        dest_name = _safe_name(new_name)
+        dest = PROJECTS_ROOT / dest_name
+        if dest.exists():
+            return {"success": False, "error": "Destination already exists"}
+
+        src.rename(dest)
+
+        # update metadata
+        meta_file = dest / "metadata.json"
+        meta = {}
+        if meta_file.exists():
+            try:
+                meta = json.loads(meta_file.read_text(encoding="utf-8"))
+            except Exception:
+                meta = {}
+        meta.update({"renamed_from": old_name, "renamed_at": datetime.utcnow().isoformat() + "Z", "name": dest_name})
+        _write_metadata(dest, meta)
+
+        return {"success": True, "project": dest_name}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
