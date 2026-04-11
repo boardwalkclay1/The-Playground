@@ -68,7 +68,7 @@ function bindPanels() {
   bindGenerator();
   bindAssistant();
   bindTerminal();
-  bindMicrocontroller(); // upgraded
+  bindMicrocontroller();
   bindProjectManagerUI();
   renderFileTreePlaceholder();
   renderEditorPlaceholder();
@@ -190,13 +190,11 @@ function bindTerminal() {
   });
 }
 
-/* ---------------- MCU PANEL (A2) ---------------- */
+/* ---------------- MCU PANEL ---------------- */
 function bindMicrocontroller() {
-  const runBtn = $("mcu-run");
-  if (!runBtn) return;
-
-  // Replace panel with upgraded minimal MCU UI
   const panel = $("panel-microcontroller");
+  if (!panel) return;
+
   panel.innerHTML = `
     <h3>Microcontroller Builder</h3>
 
@@ -282,6 +280,7 @@ function bindMicrocontroller() {
 async function loadMCUBoards() {
   const res = await apiGet("/mcu/boards");
   const sel = $("mcu-board");
+  if (!res.boards) return;
   res.boards.forEach((b) => {
     const opt = document.createElement("option");
     opt.value = b.id;
@@ -293,6 +292,7 @@ async function loadMCUBoards() {
 async function loadMCUTemplates() {
   const res = await apiGet("/mcu/templates");
   const sel = $("mcu-template");
+  if (!res.templates) return;
   res.templates.forEach((t) => {
     const opt = document.createElement("option");
     opt.value = t.id;
@@ -542,8 +542,8 @@ function refreshCapabilities() {
         <li>File Engine</li>
         <li>Project Manager</li>
         <li>Terminal Engine</li>
-        <li>Microcontroller Engine (boards, templates, examples, generate, flash)</li>
-        <li>MCU Breadboard Lab (separate page)</li>
+        <li>Microcontroller Engine</li>
+        <li>MCU Breadboard Lab</li>
       </ul>
     </details>
   `;
