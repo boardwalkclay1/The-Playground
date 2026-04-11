@@ -94,44 +94,6 @@
 
   </div>
 
-  <!-- THEME + DOCK LOGIC -->
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-
-      // Sidebar placeholder (real logic in app.js)
-      document.querySelectorAll(".pg-nav-btn").forEach(btn => {
-        btn.addEventListener("click", () => {
-          const panel = btn.dataset.panel;
-          document.getElementById("main-content").innerHTML =
-            `<h2>${panel}</h2><p class="muted">Loading...</p>`;
-        });
-      });
-
-      // Dock tabs
-      const dockTabs = document.querySelectorAll(".pg-dock-tab");
-      dockTabs.forEach(tab => {
-        tab.addEventListener("click", () => {
-          dockTabs.forEach(t => t.classList.remove("active"));
-          tab.classList.add("active");
-
-          const target = tab.dataset.dock;
-          document.querySelectorAll(".pg-dock-panel").forEach(panel => {
-            panel.classList.add("hidden");
-          });
-          document.getElementById(`dock-${target}`).classList.remove("hidden");
-        });
-      });
-
-      // Theme toggle
-      document.getElementById("theme-toggle").addEventListener("click", () => {
-        const current = document.documentElement.getAttribute("data-theme");
-        const next = current === "industrial" ? "gold" : "industrial";
-        document.documentElement.setAttribute("data-theme", next);
-      });
-
-    });
-  </script>
-
   <!-- MAIN APP LOGIC -->
   <script src="static/app.js"></script>
 
