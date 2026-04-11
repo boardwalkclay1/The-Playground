@@ -17,7 +17,12 @@ if [ ! -d ".venv" ]; then
 fi
 
 echo "[+] Activating virtualenv..."
-source .venv/bin/activate
+# Windows Git Bash uses Scripts, Linux/macOS uses bin
+if [ -f ".venv/bin/activate" ]; then
+  source .venv/bin/activate
+else
+  source .venv/Scripts/activate
+fi
 
 # -------------------------------
 # 3) Upgrade pip + install deps
@@ -89,9 +94,34 @@ except Exception as e:
 EOF
 
 # -------------------------------
+# 10) Auto-start frontend
+# -------------------------------
+echo "[+] Launching frontend..."
+cd ../frontend
+npm install --silent
+
+# Start frontend in background
+npm run dev &
+
+# Give frontend time to boot
+sleep 2
+
+# Auto-open browser
+if command -v xdg-open >/dev/null 2>&1; then
+  xdg-open http://localhost:5173
+elif command -v open >/dev/null 2>&1; then
+  open http://localhost:5173
+elif command -v start >/dev/null 2>&1; then
+  start http://localhost:5173
+fi
+
+# -------------------------------
 # DONE
 # -------------------------------
 echo ""
 echo "=== Backend environment ready ==="
 echo "Activate anytime with:"
 echo "  source backend/.venv/bin/activate"
+echo ""
+echo "Frontend is running at:"
+echo "  http://localhost:5173"
