@@ -3,7 +3,7 @@
 GitHub Operations (Safe + Token-Aware)
 --------------------------------------
 
-This module provides a hardened interface for:
+Hardened interface for:
 - Creating GitHub repositories (real API if token exists)
 - Initializing local repo structure
 - Writing README / .gitignore
@@ -15,7 +15,7 @@ If no GITHUB_TOKEN is present, operations fall back to safe stubs.
 """
 
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 import subprocess
 import shlex
 import json
@@ -23,13 +23,17 @@ import os
 import time
 
 
+# ============================================================
+# INTERNAL HELPERS
+# ============================================================
+
 def _now_iso() -> str:
-    return time.strftime("%Y-%m-%dT%H:%M:%SZ")
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
 
-def _run(cmd: str, cwd: Path) -> Dict[str, Any]:
+def _run(cmd: str, cwd: Path, timeout: int = 60) -> Dict[str, Any]:
     """
-    Safe subprocess wrapper.
+    Safe subprocess wrapper with structured output.
     """
     try:
         proc = subprocess.run(
@@ -37,7 +41,7 @@ def _run(cmd: str, cwd: Path) -> Dict[str, Any]:
             cwd=str(cwd),
             capture_output=True,
             text=True,
-            timeout=60,
+            timeout=timeout,
         )
         return {
             "success": proc.returncode == 0,
@@ -46,13 +50,32 @@ def _run(cmd: str, cwd: Path) -> Dict[str, Any]:
             "stderr": proc.stderr,
             "returncode": proc.returncode,
         }
+    except FileNotFoundError:
+        return {
+            "success": False,
+            "cmd": cmd,
+            "error": "Executable not found",
+            "code": "EXEC_NOT_FOUND",
+        }
+    except subprocess.TimeoutExpired:
+        return {
+            "success": False,
+            "cmd": cmd,
+            "error": "Command timed out",
+            "code": "TIMEOUT",
+        }
     except Exception as e:
-        return {"success": False, "cmd": cmd, "error": str(e)}
+        return {
+            "success": False,
+            "cmd": cmd,
+            "error": str(e),
+            "code": "UNKNOWN_ERROR",
+        }
 
 
 def _github_api_request(token: str, method: str, url: str, payload: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Direct GitHub API call using curl.
+    GitHub API call using curl (safe, token-aware).
     """
     cmd = [
         "curl",
@@ -67,23 +90,28 @@ def _github_api_request(token: str, method: str, url: str, payload: Dict[str, An
     try:
         proc = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
         body = proc.stdout.strip()
+
         try:
             data = json.loads(body)
         except Exception:
             data = {"raw": body}
 
         return {
-            "success": proc.returncode == 0 and "id" in data,
+            "success": proc.returncode == 0 and isinstance(data, dict),
             "status": proc.returncode,
             "response": data,
         }
+
+    except subprocess.TimeoutExpired:
+        return {"success": False, "error": "GitHub API timeout", "code": "TIMEOUT"}
+
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": str(e), "code": "UNKNOWN"}
 
 
-# ---------------------------------------------------------
+# ============================================================
 # PUBLIC API
-# ---------------------------------------------------------
+# ============================================================
 
 def create_repo(
     name: str,
@@ -143,12 +171,13 @@ def create_repo(
 
 def init_local_repo(path: str) -> Dict[str, Any]:
     """
-    Initialize a local git repo.
+    Initialize a local git repo with deterministic steps.
     """
     root = Path(path)
     root.mkdir(parents=True, exist_ok=True)
 
-    steps = []
+    steps: List[Dict[str, Any]] = []
+
     steps.append(_run("git init", root))
     steps.append(_run("git add .", root))
     steps.append(_run('git commit -m "Initial commit"', root))
@@ -166,7 +195,8 @@ def push_to_github(path: str, remote_url: str) -> Dict[str, Any]:
     """
     root = Path(path)
 
-    steps = []
+    steps: List[Dict[str, Any]] = []
+
     steps.append(_run(f"git remote add origin {remote_url}", root))
     steps.append(_run("git branch -M main", root))
     steps.append(_run("git push -u origin main", root))
