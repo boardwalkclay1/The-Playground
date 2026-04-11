@@ -2,17 +2,16 @@
 
 from fastapi import APIRouter
 from pydantic import BaseModel
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import os, json, subprocess
-import openai
+
+from openai_client import chat as openai_chat  # uses your unified OpenAI client
 
 router = APIRouter()
 
 # ---------------------------------------------------------
 # CONFIG: MULTI-AI ENGINE
 # ---------------------------------------------------------
-
-openai.api_key = os.getenv("OPENAI_API_KEY")
 
 MODELS = {
     "reasoning": "gpt-4o",
@@ -27,7 +26,8 @@ MODELS = {
 
 class AssistantRequest(BaseModel):
     prompt: str
-    project_name: str
+    project_name: Optional[str] = None  # now optional
+
 
 class AssistantResponse(BaseModel):
     success: bool
@@ -39,11 +39,17 @@ class AssistantResponse(BaseModel):
 # CHAT HISTORY
 # ---------------------------------------------------------
 
-def history_path(project_name: str) -> str:
+def history_path(project_name: Optional[str]) -> str:
+    """
+    If project_name is provided -> per-project history.
+    If not -> global history.
+    """
     os.makedirs("./projects", exist_ok=True)
-    return f"./projects/{project_name}/.assistant_history.json"
+    key = project_name or "_global"
+    return f"./projects/{key}/.assistant_history.json"
 
-def load_history(project_name: str) -> List[Dict[str, str]]:
+
+def load_history(project_name: Optional[str]) -> List[Dict[str, str]]:
     path = history_path(project_name)
     if not os.path.exists(path):
         return []
@@ -53,7 +59,8 @@ def load_history(project_name: str) -> List[Dict[str, str]]:
     except Exception:
         return []
 
-def save_history(project_name: str, history: List[Dict[str, str]]) -> None:
+
+def save_history(project_name: Optional[str], history: List[Dict[str, str]]) -> None:
     path = history_path(project_name)
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
@@ -68,6 +75,7 @@ def _project_root(project_name: str) -> str:
     os.makedirs(base, exist_ok=True)
     return base
 
+
 def tool_read_file(project_name: str, path: str) -> str:
     base = _project_root(project_name)
     full = os.path.normpath(os.path.join(base, path))
@@ -78,6 +86,7 @@ def tool_read_file(project_name: str, path: str) -> str:
             return f.read()
     except Exception as e:
         return f"ERROR: {e}"
+
 
 def tool_write_file(project_name: str, path: str, content: str) -> str:
     base = _project_root(project_name)
@@ -91,6 +100,7 @@ def tool_write_file(project_name: str, path: str, content: str) -> str:
         return "OK"
     except Exception as e:
         return f"ERROR: {e}"
+
 
 def tool_run_command(project_name: str, command: str) -> str:
     base = _project_root(project_name)
@@ -110,9 +120,11 @@ def tool_run_command(project_name: str, command: str) -> str:
     except Exception as e:
         return f"ERROR: {e}"
 
+
 def tool_mcu_generate(project_name: str, prompt: str) -> str:
     # hook into your real MCU engine here when ready
     return f"MCU generation requested with prompt: {prompt}"
+
 
 def tool_list_files(project_name: str, path: str = ".") -> str:
     base = _project_root(project_name)
@@ -204,6 +216,7 @@ def _build_tool_defs(tools: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
             })
     return tool_defs
 
+
 def call_llm(system_prompt: str, history: List[Dict[str, str]], tools: List[Dict[str, Any]], mode: str = "reasoning") -> Dict[str, Any]:
     model = MODELS.get(mode, MODELS["reasoning"])
     messages = [{"role": "system", "content": system_prompt}]
@@ -211,17 +224,18 @@ def call_llm(system_prompt: str, history: List[Dict[str, str]], tools: List[Dict
 
     tool_defs = _build_tool_defs(tools)
 
-    resp = openai.chat.completions.create(
+    resp = openai_chat(
         model=model,
         messages=messages,
         tools=tool_defs if tool_defs else None,
         tool_choice="auto" if tool_defs else "none",
+        temperature=0.3,
     )
 
     msg = resp.choices[0].message
 
     tool_calls = []
-    if msg.tool_calls:
+    if getattr(msg, "tool_calls", None):
         for tc in msg.tool_calls:
             tool_calls.append({
                 "tool": tc.function.name,
@@ -238,20 +252,37 @@ def call_llm(system_prompt: str, history: List[Dict[str, str]], tools: List[Dict
 # ORCHESTRATOR
 # ---------------------------------------------------------
 
-def run_agent(prompt: str, project_name: str) -> AssistantResponse:
+def run_agent(prompt: str, project_name: Optional[str]) -> AssistantResponse:
     logs: List[str] = []
     actions: List[Dict[str, Any]] = []
 
+    # history is global if no project_name
     history = load_history(project_name)
     history.append({"role": "user", "content": prompt})
 
-    tools = [
-        {"name": "read_file", "description": "Read a file from the current project"},
-        {"name": "write_file", "description": "Write or overwrite a file in the current project"},
-        {"name": "run_command", "description": "Run a shell command in the project directory"},
-        {"name": "mcu_generate", "description": "Generate microcontroller firmware or code"},
-        {"name": "list_files", "description": "List files and folders in the project"},
-    ]
+    # tools only available when a project is actually selected
+    if project_name:
+        tools = [
+            {"name": "read_file", "description": "Read a file from the current project"},
+            {"name": "write_file", "description": "Write or overwrite a file in the current project"},
+            {"name": "run_command", "description": "Run a shell command in the project directory"},
+            {"name": "mcu_generate", "description": "Generate microcontroller firmware or code"},
+            {"name": "list_files", "description": "List files and folders in the project"},
+        ]
+        system_prompt = (
+            "You are the Boardwalk Playground Studio super-assistant. "
+            "You can casually chat, reason deeply, and also fully operate a project when one is selected: "
+            "read/write files, run commands, inspect the project tree, and generate MCU code. "
+            "Use tools only when they are truly helpful; otherwise just respond conversationally."
+        )
+    else:
+        tools = []
+        system_prompt = (
+            "You are the Boardwalk Playground Studio super-assistant. "
+            "No project is selected. You should behave like a general conversational AI: "
+            "chat naturally, reason deeply, and help with anything. "
+            "Do NOT mention missing projects or limitations—just respond."
+        )
 
     mode = (
         "coding" if "code" in prompt.lower() or "refactor" in prompt.lower() else
@@ -259,21 +290,16 @@ def run_agent(prompt: str, project_name: str) -> AssistantResponse:
         "reasoning"
     )
 
-    # First LLM pass: decide tools
+    # First LLM pass
     llm_result = call_llm(
-        system_prompt=(
-            "You are the Boardwalk Playground Studio super-assistant. "
-            "You can fully operate the Playground: read/write files, run commands, "
-            "inspect the project tree, and generate MCU code. "
-            "Use tools when needed, then explain clearly what you did and what to do next."
-        ),
+        system_prompt=system_prompt,
         history=history,
         tools=tools,
         mode=mode,
     )
 
-    # Execute tool calls (single round)
-    if llm_result.get("tool_calls"):
+    # If no project, there should be no tool calls anyway
+    if project_name and llm_result.get("tool_calls"):
         for call in llm_result["tool_calls"]:
             t = call["tool"]
             args = call.get("args", {}) or {}
@@ -314,15 +340,15 @@ def run_agent(prompt: str, project_name: str) -> AssistantResponse:
                 logs.append(f"list_files:{path}")
                 history.append({"role": "tool", "name": "list_files", "content": result})
 
-        # Second LLM pass: summarize + next steps after tools
+        # Second LLM pass after tools
         llm_result = call_llm(
             system_prompt=(
                 "You have just executed tools on the project. "
                 "Explain clearly what you did, what you found, and what you recommend next. "
-                "Be concrete and operational."
+                "Be concrete and operational, but still conversational."
             ),
             history=history,
-            tools=[],  # no more tools this pass; just reasoning
+            tools=[],
             mode=mode,
         )
 
@@ -341,7 +367,7 @@ def run_agent(prompt: str, project_name: str) -> AssistantResponse:
 # ROUTE
 # ---------------------------------------------------------
 
-# NOTE: main.py mounts this router with prefix="/api",
+# main.py mounts this router with prefix="/api",
 # so this endpoint is available at: POST /api/assistant/run
 @router.post("/assistant/run", response_model=AssistantResponse)
 async def assistant_run(req: AssistantRequest):
