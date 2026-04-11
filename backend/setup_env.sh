@@ -1,19 +1,97 @@
 #!/usr/bin/env bash
 set -e
 
-# 1) create and activate venv (POSIX)
+echo "=== Boardwalk Backend Setup ==="
+
+# -------------------------------
+# 1) Enter backend folder
+# -------------------------------
 cd backend
 
-python3 -m venv .venv
-# POSIX activation
+# -------------------------------
+# 2) Create + activate venv
+# -------------------------------
+if [ ! -d ".venv" ]; then
+  echo "[+] Creating virtualenv..."
+  python3 -m venv .venv
+fi
+
+echo "[+] Activating virtualenv..."
 source .venv/bin/activate
 
-# 2) upgrade pip and install requirements
+# -------------------------------
+# 3) Upgrade pip + install deps
+# -------------------------------
+echo "[+] Upgrading pip..."
 python -m pip install --upgrade pip
+
+echo "[+] Installing backend requirements..."
 pip install -r requirements.txt
 
-# 3) verify uvicorn and fastapi
-python -c "import fastapi, uvicorn; print('fastapi', fastapi.__version__, 'uvicorn OK')"
+# -------------------------------
+# 4) Verify core backend modules
+# -------------------------------
+echo "[+] Verifying FastAPI + Uvicorn..."
+python - << 'EOF'
+import fastapi, uvicorn
+print("FastAPI:", fastapi.__version__)
+print("Uvicorn OK")
+EOF
 
-echo "Backend virtualenv created at backend/.venv and packages installed."
-echo "Activate with: source backend/.venv/bin/activate"
+# -------------------------------
+# 5) Verify MCU toolchain
+# -------------------------------
+echo "[+] Checking esptool..."
+python -m esptool version || echo "WARNING: esptool not found"
+
+echo "[+] Checking PlatformIO..."
+platformio --version || echo "WARNING: PlatformIO not installed or not in PATH"
+
+# -------------------------------
+# 6) Verify Git availability
+# -------------------------------
+echo "[+] Checking Git..."
+git --version || echo "WARNING: Git not installed"
+
+# -------------------------------
+# 7) Verify Cloudflare Wrangler
+# -------------------------------
+echo "[+] Checking Wrangler..."
+wrangler --version || echo "WARNING: Wrangler not installed"
+
+# -------------------------------
+# 8) Verify Node/NPM (for Pages builds)
+# -------------------------------
+echo "[+] Checking Node..."
+node --version || echo "WARNING: Node not installed"
+
+echo "[+] Checking NPM..."
+npm --version || echo "WARNING: NPM not installed"
+
+# -------------------------------
+# 9) Validate assistant-config.json
+# -------------------------------
+echo "[+] Validating assistant-config.json..."
+python - << 'EOF'
+import json, sys
+from pathlib import Path
+
+cfg = Path("assistant-config.json")
+if not cfg.exists():
+    print("WARNING: assistant-config.json missing")
+    sys.exit(0)
+
+try:
+    json.loads(cfg.read_text())
+    print("assistant-config.json OK")
+except Exception as e:
+    print("ERROR: assistant-config.json invalid:", e)
+EOF
+
+# -------------------------------
+# DONE
+# -------------------------------
+echo ""
+echo "=== Backend environment ready ==="
+echo "Activate anytime with:"
+echo "  source backend/.venv/bin/activate"
