@@ -18,12 +18,18 @@ from .engine import (
 router = APIRouter(prefix="/mcu", tags=["mcu"])
 
 
+# -------------------- MODELS --------------------
+
 class GenerateRequest(BaseModel):
     project_name: str
     prompt: str
     template_id: Optional[str] = None
     board_id: Optional[str] = None
     merge_strategy: str = "overwrite"
+
+
+class FlashRequest(BaseModel):
+    project_name: str
 
 
 class BreadboardRequest(BaseModel):
@@ -45,6 +51,8 @@ class SettingsUpdateRequest(BaseModel):
     settings: Dict[str, Any]
 
 
+# -------------------- ROUTES --------------------
+
 @router.post("/generate")
 def mcu_generate(req: GenerateRequest):
     return generate_firmware(
@@ -57,8 +65,8 @@ def mcu_generate(req: GenerateRequest):
 
 
 @router.post("/flash")
-def mcu_flash(project_name: str):
-    return flash_firmware(project_name)
+def mcu_flash(req: FlashRequest):
+    return flash_firmware(req.project_name)
 
 
 @router.post("/simulate")
@@ -68,7 +76,7 @@ def mcu_simulate(req: BreadboardRequest):
 
 @router.get("/templates")
 def mcu_list_templates():
-    return list_firmware_templates()
+    return {"templates": list_firmware_templates()}
 
 
 @router.get("/templates/{template_id}")
@@ -93,7 +101,7 @@ def mcu_save_template(req: TemplateSaveRequest):
 
 @router.get("/boards")
 def mcu_boards():
-    return list_supported_boards()
+    return {"boards": list_supported_boards()}
 
 
 @router.get("/settings/{project_name}")
