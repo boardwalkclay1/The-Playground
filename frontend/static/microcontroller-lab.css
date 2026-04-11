@@ -1,4 +1,4 @@
-/* MCU LAB — Cinematic Dark Theme */
+/* MCU LAB PRO — Cinematic Dark Theme */
 
 body {
   margin: 0;
@@ -96,26 +96,52 @@ body {
 }
 
 .comp {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   background: #0f1522;
   border: 1px solid #2b3148;
   padding: 8px;
   border-radius: 6px;
   cursor: grab;
-  text-align: center;
 }
 
 .comp:hover {
   background: #1a2235;
 }
 
+.comp-icon {
+  width: 32px;
+  height: auto;
+}
+
 /* CANVAS */
-.canvas {
+#zoom-container {
   width: 100%;
   height: 100%;
-  background: #0b0f1a;
-  border: 1px solid #1f2433;
-  border-radius: 8px;
+  overflow: hidden;
   position: relative;
+  transform-origin: center center;
+}
+
+#board-layer img {
+  width: 600px;
+  opacity: 0.95;
+}
+
+#wire-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 2000px;
+  height: 2000px;
+  pointer-events: none;
+}
+
+#component-layer img {
+  position: absolute;
+  width: 60px;
+  cursor: pointer;
 }
 
 /* NETLIST */
