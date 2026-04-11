@@ -1,3 +1,21 @@
+# backend/main.py
+"""
+Unified FastAPI Application
+---------------------------
+
+This app integrates:
+- Universal Generator
+- Assistant (project-aware, policy-driven)
+- File operations
+- Terminal operations
+- Project manager
+- Cloudflare ops
+- GitHub ops
+- MCU router (optional)
+- AI Panel Pro
+- Static assets
+"""
+
 from pathlib import Path
 from typing import Dict, Any, List
 from fastapi import FastAPI, HTTPException
@@ -7,10 +25,11 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 import uuid
 
+# Core modules
 from generator.orchestrator import run_universal_generator
-from assistant import AIAgent
+from assistant.assistant_api import router as assistant_router
 
-# Modular imports
+# Optional modules
 try:
     from project_manager import (
         list_projects,
@@ -36,17 +55,20 @@ try:
 except Exception:
     terminal_router = None
 
-# MCU API router (optional)
 try:
     from microcontroller.api import router as mcu_router
 except Exception:
     mcu_router = None
 
+
+# ============================================================
+# APP + STATIC
+# ============================================================
+
 app = FastAPI()
 PROJECTS_ROOT = Path("projects")
 PROJECTS_ROOT.mkdir(parents=True, exist_ok=True)
 
-# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -54,22 +76,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Static files (CSS, JS, MCU Lab, assets)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
-# -----------------------------
+# ============================================================
 # MODELS
-# -----------------------------
+# ============================================================
+
 class GeneratorRequest(BaseModel):
     prompt: str
     project_name: str
     app_type: str = "generic"
-
-
-class AssistantRequest(BaseModel):
-    prompt: str
-    project_name: str
 
 
 class ProjectCreateRequest(BaseModel):
@@ -106,7 +123,6 @@ class TerminalRequest(BaseModel):
     command: str
 
 
-# AI Panel Pro models
 class AIPanelRequest(BaseModel):
     prompt: str
     session_id: str
@@ -117,10 +133,10 @@ class AIPanelImageRequest(AIPanelRequest):
     resolution: str
 
 
-# -----------------------------
+# ============================================================
 # IN-MEMORY CONVERSATION STORE
-# (swap to DB/Redis later)
-# -----------------------------
+# ============================================================
+
 CONVERSATIONS: Dict[str, List[Dict[str, str]]] = {}
 
 
@@ -133,9 +149,10 @@ def append_history(session_id: str, role: str, content: str) -> None:
     CONVERSATIONS[session_id] = CONVERSATIONS[session_id][-30:]
 
 
-# -----------------------------
+# ============================================================
 # GENERATOR
-# -----------------------------
+# ============================================================
+
 @app.post("/api/generator/run")
 def api_generator_run(req: GeneratorRequest):
     result = run_universal_generator(
@@ -152,23 +169,17 @@ def api_generator_run(req: GeneratorRequest):
     }
 
 
-# -----------------------------
-# ASSISTANT (PROJECT-AWARE)
-# -----------------------------
-@app.post("/api/assistant/run")
-def api_assistant_run(req: AssistantRequest):
-    project_path = PROJECTS_ROOT / req.project_name
-    if not project_path.exists():
-        raise HTTPException(status_code=404, detail="Project not found")
+# ============================================================
+# ASSISTANT ROUTER (FULL FEATURE SET)
+# ============================================================
 
-    agent = AIAgent()
-    result = agent.run(req.prompt, str(project_path))
-    return result
+app.include_router(assistant_router, prefix="/api")
 
 
-# -----------------------------
+# ============================================================
 # PREVIEW
-# -----------------------------
+# ============================================================
+
 @app.get("/preview/{project_name}", response_class=HTMLResponse)
 def preview_project(project_name: str):
     project_path = PROJECTS_ROOT / project_name
@@ -181,9 +192,10 @@ def preview_project(project_name: str):
     return HTMLResponse(content=html)
 
 
-# -----------------------------
+# ============================================================
 # PROJECT MANAGER
-# -----------------------------
+# ============================================================
+
 @app.get("/api/projects")
 def api_list_projects():
     try:
@@ -224,133 +236,60 @@ def api_rename_project(payload: ProjectRenameRequest):
         return {"success": False, "error": str(e)}
 
 
-# -----------------------------
-# FILES ROUTER
-# -----------------------------
+# ============================================================
+# FILES ROUTER (OPTIONAL)
+# ============================================================
+
 if files_router:
     app.include_router(files_router, prefix="/api")
-else:
-    @app.get("/api/files/tree/{project_name}")
-    def api_files_tree(project_name: str):
-        project_path = PROJECTS_ROOT / project_name
-        if not project_path.exists():
-            raise HTTPException(status_code=404, detail="Project not found")
-
-        def build_tree(base: Path, root: Path):
-            items = []
-            for p in sorted(base.iterdir(), key=lambda x: x.name):
-                rel = p.relative_to(root).as_posix()
-                if p.is_dir():
-                    items.append(
-                        {
-                            "type": "dir",
-                            "name": p.name,
-                            "path": rel,
-                            "children": build_tree(p, root),
-                        }
-                    )
-                else:
-                    items.append({"type": "file", "name": p.name, "path": rel})
-            return items
-
-        return {"success": True, "tree": build_tree(project_path, project_path)}
-
-    @app.post("/api/files/read")
-    def api_files_read(payload: FileReadRequest):
-        project_path = PROJECTS_ROOT / payload.project_name
-        file_path = project_path / payload.path
-        if not file_path.exists():
-            raise HTTPException(status_code=404, detail="File not found")
-        return {"success": True, "content": file_path.read_text(encoding="utf-8")}
-
-    @app.post("/api/files/write")
-    def api_files_write(payload: FileWriteRequest):
-        project_path = PROJECTS_ROOT / payload.project_name
-        file_path = project_path / payload.path
-        file_path.parent.mkdir(parents=True, exist_ok=True)
-        file_path.write_text(payload.content, encoding="utf-8")
-        return {"success": True}
-
-    @app.post("/api/files/delete")
-    def api_files_delete(payload: FileReadRequest):
-        project_path = PROJECTS_ROOT / payload.project_name
-        file_path = project_path / payload.path
-        if not file_path.exists():
-            raise HTTPException(status_code=404, detail="File not found")
-        if file_path.is_dir():
-            import shutil
-
-            shutil.rmtree(file_path)
-        else:
-            file_path.unlink()
-        return {"success": True}
 
 
-# -----------------------------
-# TERMINAL ROUTER
-# -----------------------------
+# ============================================================
+# TERMINAL ROUTER (OPTIONAL)
+# ============================================================
+
 if terminal_router:
     app.include_router(terminal_router, prefix="/api")
-else:
-    @app.post("/api/terminal/run")
-    def api_terminal_run(req: TerminalRequest):
-        project_path = PROJECTS_ROOT / req.project_name
-        if not project_path.exists():
-            raise HTTPException(status_code=404, detail="Project not found")
-
-        agent = AIAgent()
-        result = agent.run(f"run command: {req.command}", str(project_path))
-        return result
 
 
-# -----------------------------
+# ============================================================
 # MCU ROUTER (OPTIONAL)
-# -----------------------------
+# ============================================================
+
 if mcu_router:
     app.include_router(mcu_router, prefix="/mcu")
 
 
-# -----------------------------
-# AI PANEL PRO ROUTES
-# -----------------------------
+# ============================================================
+# AI PANEL PRO
+# ============================================================
+
 @app.post("/ai/wiring")
 def ai_wiring(req: AIPanelRequest):
-    history = get_history(req.session_id)
     append_history(req.session_id, "user", f"[WIRING] {req.prompt}")
-
-    # TODO: wire to your LLM (Boardwalk MCU wiring expert)
-    text = "[WIRING RESPONSE HERE]"  # replace with real model call
-
+    text = "[WIRING RESPONSE HERE]"
     append_history(req.session_id, "assistant", text)
     return {"text": text}
 
 
 @app.post("/ai/code")
 def ai_code(req: AIPanelRequest):
-    history = get_history(req.session_id)
     append_history(req.session_id, "user", f"[CODE] {req.prompt}")
-
-    # TODO: wire to your LLM (firmware / app code generator)
-    text = "[CODE RESPONSE HERE]"  # replace with real model call
-
+    text = "[CODE RESPONSE HERE]"
     append_history(req.session_id, "assistant", text)
     return {"text": text}
 
 
 @app.post("/ai/image")
 def ai_image(req: AIPanelImageRequest):
-    history = get_history(req.session_id)
     append_history(
         req.session_id,
         "user",
         f"[IMAGE] {req.prompt} | style={req.style} | res={req.resolution}",
     )
 
-    # TODO: call your image model (SDXL / OpenAI / etc.)
-    # image_url = generate_image(req.prompt, style=req.style, resolution=req.resolution)
-    image_url = f"/static/generated/{uuid.uuid4()}.png"  # placeholder path
-
+    image_url = f"/static/generated/{uuid.uuid4()}.png"
     desc = f"Generated image in style '{req.style}' at {req.resolution}."
-    append_history(req.session_id, "assistant", desc)
 
+    append_history(req.session_id, "assistant", desc)
     return {"image_url": image_url, "description": desc}
