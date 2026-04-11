@@ -153,8 +153,6 @@ body.playground-root {
   overflow: hidden;
 }
 
-/* MAIN SCREEN */
-
 .pg-main-screen {
   flex: 1;
   background: var(--bg-panel-alt);
@@ -276,7 +274,7 @@ body.playground-root {
 }
 
 /* ============================================================
-   AI PANEL — RIGHT SLIDE-OUT, SEPARATE FROM TERMINAL
+   AI PANEL — RIGHT SLIDE-OUT (360px)
    ============================================================ */
 
 #dock-ai {
@@ -285,18 +283,16 @@ body.playground-root {
   right: 0;
   bottom: 0;
   width: 360px;
-  max-width: 40%;
   background: var(--bg-panel);
   border-left: 1px solid var(--border);
   padding: 12px;
   display: flex;
   flex-direction: column;
   transform: translateX(100%);
-  transition: transform 0.2s ease-out;
-  z-index: 20;
+  transition: transform 0.25s ease-out;
+  z-index: 50;
 }
 
-/* when body has .ai-open, slide the panel in */
 body.ai-open #dock-ai {
   transform: translateX(0);
 }
@@ -326,6 +322,25 @@ body.ai-open #dock-ai {
   padding: 8px;
   color: var(--text);
   resize: none;
+}
+
+/* ============================================================
+   FLOATING AI BUTTON (RIGHT EDGE)
+   ============================================================ */
+
+#ai-float-btn {
+  position: fixed;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+  background: var(--accent);
+  color: #111;
+  padding: 10px 14px;
+  border-radius: 8px 0 0 8px;
+  cursor: pointer;
+  z-index: 60;
+  font-weight: bold;
+  border: none;
 }
 
 /* ============================================================
