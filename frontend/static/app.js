@@ -1,10 +1,21 @@
-// static/app.js
-// NEW LAYOUT VERSION — MATCHES NEW index.html + new CSS
+// static/app.js — FINAL VERSION FOR NEW LAYOUT
 
 let currentProjectName = null;
 let currentFilePath = null;
 
-const API_BASE = "http://localhost:8000";
+// Auto-detect backend
+function detectBackend() {
+  const saved = localStorage.getItem("backend_url");
+  if (saved) return saved;
+
+  if (window.location.hostname !== "localhost") {
+    return window.location.origin;
+  }
+
+  return "http://localhost:8000";
+}
+
+let API_BASE = detectBackend();
 const $ = (id) => document.getElementById(id);
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -12,50 +23,32 @@ document.addEventListener("DOMContentLoaded", () => {
   bindDockTabs();
   bindTerminal();
   bindAI();
-  loadHomeScreen();
+  loadHome();
 });
 
 /* ---------------------------------------------------------
-   SIDEBAR NAVIGATION → loads panels into #main-content
+   SIDEBAR → loads panels into #main-content
 --------------------------------------------------------- */
 function bindSidebar() {
   document.querySelectorAll(".pg-nav-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const panel = btn.dataset.panel;
-      loadPanel(panel);
-    });
+    btn.addEventListener("click", () => loadPanel(btn.dataset.panel));
   });
 }
 
 function loadPanel(panel) {
   switch (panel) {
-    case "projects":
-      renderProjectsPanel();
-      break;
-    case "filetree":
-      renderFileTreePanel();
-      break;
-    case "generator":
-      renderGeneratorPanel();
-      break;
-    case "microcontroller":
-      renderMCUPanel();
-      break;
-    case "cloudflare":
-      $("main-content").innerHTML = `<h2>Cloudflare</h2><p class="muted">Coming soon.</p>`;
-      break;
-    case "capabilities":
-      renderCapabilitiesPanel();
-      break;
-    case "settings":
-      $("main-content").innerHTML = `<h2>Settings</h2><p class="muted">Coming soon.</p>`;
-      break;
-    default:
-      loadHomeScreen();
+    case "projects": renderProjects(); break;
+    case "filetree": renderFileTree(); break;
+    case "generator": renderGenerator(); break;
+    case "microcontroller": renderMCU(); break;
+    case "cloudflare": $("main-content").innerHTML = `<h2>Cloudflare</h2><p class="muted">Coming soon.</p>`; break;
+    case "capabilities": renderCapabilities(); break;
+    case "settings": renderSettings(); break;
+    default: loadHome();
   }
 }
 
-function loadHomeScreen() {
+function loadHome() {
   $("main-content").innerHTML = `
     <h2>Welcome</h2>
     <p class="muted">Choose a tool from the left sidebar.</p>
@@ -63,7 +56,7 @@ function loadHomeScreen() {
 }
 
 /* ---------------------------------------------------------
-   DOCK TABS (Terminal / Errors / AI)
+   DOCK TABS
 --------------------------------------------------------- */
 function bindDockTabs() {
   const tabs = document.querySelectorAll(".pg-dock-tab");
@@ -92,14 +85,8 @@ function bindTerminal() {
     const cmd = $("terminal-input").value.trim();
     const out = $("terminal-output");
 
-    if (!cmd) {
-      out.textContent = "Command is empty.";
-      return;
-    }
-    if (!currentProjectName) {
-      out.textContent = "No project selected.";
-      return;
-    }
+    if (!cmd) return out.textContent = "Command empty.";
+    if (!currentProjectName) return out.textContent = "No project selected.";
 
     out.textContent = `Running: ${cmd}\n`;
 
@@ -119,23 +106,17 @@ function bindTerminal() {
 }
 
 /* ---------------------------------------------------------
-   AI ASSISTANT (dock panel)
+   AI ASSISTANT
 --------------------------------------------------------- */
 function bindAI() {
   $("ai-send").addEventListener("click", async () => {
     const input = $("ai-input").value.trim();
     const out = $("ai-output");
 
-    if (!input) {
-      out.textContent = "Assistant prompt is empty.";
-      return;
-    }
-    if (!currentProjectName) {
-      out.textContent = "No project selected.";
-      return;
-    }
+    if (!input) return out.textContent = "Prompt empty.";
+    if (!currentProjectName) return out.textContent = "No project selected.";
 
-    out.textContent = "Assistant running...\n";
+    out.textContent = "Running...\n";
 
     const res = await apiPost("/api/assistant/run", {
       prompt: input,
@@ -149,9 +130,9 @@ function bindAI() {
 }
 
 /* ---------------------------------------------------------
-   GENERATOR PANEL
+   GENERATOR
 --------------------------------------------------------- */
-function renderGeneratorPanel() {
+function renderGenerator() {
   $("main-content").innerHTML = `
     <h2>App Generator</h2>
     <textarea id="generator-input" placeholder="Describe the app..."></textarea>
@@ -172,10 +153,10 @@ function renderGeneratorPanel() {
     });
 
     if (res.success) {
-      renderProjectsPanel();
-      renderFileTreePanel();
+      renderProjects();
+      renderFileTree();
       loadPreview(projectName);
-      showMessage("Generated " + projectName);
+      message("Generated " + projectName);
     } else {
       $("dock-errors").textContent = res.error || "Generation failed.";
     }
@@ -183,22 +164,22 @@ function renderGeneratorPanel() {
 }
 
 /* ---------------------------------------------------------
-   PROJECTS PANEL
+   PROJECTS
 --------------------------------------------------------- */
-function renderProjectsPanel() {
+function renderProjects() {
   $("main-content").innerHTML = `
     <h2>Projects</h2>
-    <input id="pm-new-name" placeholder="New project name" />
+    <input id="pm-new" placeholder="New project name">
     <button id="pm-create" class="pg-btn-primary" style="margin-top:8px;">Create</button>
     <div id="pm-list" style="margin-top:12px;"></div>
   `;
 
   $("pm-create").addEventListener("click", async () => {
-    const name = $("pm-new-name").value.trim();
+    const name = $("pm-new").value.trim();
     if (!name) return;
 
     const res = await apiPost("/api/projects/create", { name });
-    if (res.success) renderProjectsPanel();
+    if (res.success) renderProjects();
   });
 
   loadProjects();
@@ -209,10 +190,7 @@ async function loadProjects() {
   list.textContent = "Loading...";
 
   const res = await apiGet("/api/projects");
-  if (!res.success) {
-    list.textContent = "Failed to load projects";
-    return;
-  }
+  if (!res.success) return list.textContent = "Failed to load.";
 
   list.innerHTML = "";
   res.projects.forEach((p) => {
@@ -224,17 +202,17 @@ async function loadProjects() {
       <button class="pg-btn pm-del">Delete</button>
     `;
 
-    row.querySelector(".pm-open").addEventListener("click", async () => {
+    row.querySelector(".pm-open").addEventListener("click", () => {
       currentProjectName = p;
-      renderFileTreePanel();
+      renderFileTree();
       loadPreview(p);
-      showMessage(`Opened ${p}`);
+      message(`Opened ${p}`);
     });
 
     row.querySelector(".pm-del").addEventListener("click", async () => {
       if (!confirm(`Delete ${p}?`)) return;
       const r = await apiPost("/api/projects/delete", { name: p });
-      if (r.success) renderProjectsPanel();
+      if (r.success) renderProjects();
     });
 
     list.appendChild(row);
@@ -242,22 +220,22 @@ async function loadProjects() {
 }
 
 /* ---------------------------------------------------------
-   FILE TREE PANEL
+   FILE TREE
 --------------------------------------------------------- */
-function renderFileTreePanel() {
+function renderFileTree() {
   if (!currentProjectName) {
     $("main-content").innerHTML = `<h2>File Tree</h2><p class="muted">No project selected.</p>`;
     return;
   }
 
   $("main-content").innerHTML = `<h2>File Tree</h2><p>Loading...</p>`;
-  loadFileTree();
+  loadTree();
 }
 
-async function loadFileTree() {
+async function loadTree() {
   const res = await apiGet(`/api/files/tree/${currentProjectName}`);
   if (!res.success) {
-    $("main-content").innerHTML = `<h2>File Tree</h2><p>Failed to load.</p>`;
+    $("main-content").innerHTML = `<h2>File Tree</h2><p>Failed.</p>`;
     return;
   }
 
@@ -296,7 +274,7 @@ async function openFile(path) {
   });
 
   if (!res.success) {
-    $("main-content").innerHTML = `<h2>Editor</h2><p>Failed to load file.</p>`;
+    $("main-content").innerHTML = `<h2>Editor</h2><p>Failed to load.</p>`;
     return;
   }
 
@@ -316,7 +294,7 @@ async function openFile(path) {
       content: $("editor-text").value,
     });
 
-    if (r.success) showMessage("Saved.");
+    if (r.success) message("Saved.");
   });
 }
 
@@ -331,26 +309,9 @@ function loadPreview(projectName) {
 }
 
 /* ---------------------------------------------------------
-   CAPABILITIES
+   MCU
 --------------------------------------------------------- */
-function renderCapabilitiesPanel() {
-  $("main-content").innerHTML = `
-    <h2>Capabilities</h2>
-    <ul>
-      <li>App Generator</li>
-      <li>AI Assistant</li>
-      <li>File Engine</li>
-      <li>Terminal Engine</li>
-      <li>Microcontroller Engine</li>
-      <li>Breadboard Lab</li>
-    </ul>
-  `;
-}
-
-/* ---------------------------------------------------------
-   MCU PANEL
---------------------------------------------------------- */
-function renderMCUPanel() {
+function renderMCU() {
   $("main-content").innerHTML = `
     <h2>Microcontroller Builder</h2>
     <textarea id="mcu-input" placeholder="Describe firmware..."></textarea>
@@ -369,6 +330,45 @@ function renderMCUPanel() {
     });
 
     $("mcu-output").textContent = JSON.stringify(res, null, 2);
+  });
+}
+
+/* ---------------------------------------------------------
+   CAPABILITIES
+--------------------------------------------------------- */
+function renderCapabilities() {
+  $("main-content").innerHTML = `
+    <h2>Capabilities</h2>
+    <ul>
+      <li>App Generator</li>
+      <li>AI Assistant</li>
+      <li>File Engine</li>
+      <li>Terminal Engine</li>
+      <li>Microcontroller Engine</li>
+      <li>Breadboard Lab</li>
+    </ul>
+  `;
+}
+
+/* ---------------------------------------------------------
+   SETTINGS
+--------------------------------------------------------- */
+function renderSettings() {
+  $("main-content").innerHTML = `
+    <h2>Settings</h2>
+    <input id="backend-url" placeholder="Backend URL" style="width:260px;">
+    <button id="backend-save" class="pg-btn-primary" style="margin-left:8px;">Save</button>
+  `;
+
+  $("backend-save").addEventListener("click", () => {
+    const url = $("backend-url").value.trim();
+    if (!url) return alert("Enter URL");
+
+    localStorage.setItem("backend_url", url);
+    API_BASE = url;
+
+    alert("Backend updated. Reloading...");
+    location.reload();
   });
 }
 
@@ -400,7 +400,7 @@ async function apiPost(path, body) {
 /* ---------------------------------------------------------
    UI MESSAGE
 --------------------------------------------------------- */
-function showMessage(msg) {
+function message(msg) {
   const el = document.createElement("div");
   el.textContent = msg;
   el.style.padding = "6px";
