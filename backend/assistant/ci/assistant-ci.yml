@@ -1,18 +1,46 @@
-# backend/assistant/ci/assistant-ci.yml
 name: Assistant CI
-on: [push, pull_request]
+
+on:
+  push:
+  pull_request:
+
 jobs:
   test:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: "3.11"
-      - name: Install deps
+
+      - name: Install system deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git
+
+      - name: Install Python deps
         run: |
           python -m pip install --upgrade pip
-          pip install pytest
+          pip install \
+            fastapi \
+            uvicorn \
+            pydantic \
+            pytest \
+            pytest-asyncio \
+            httpx \
+            anyio
+
+      - name: Lint (import check)
+        run: |
+          python - << 'EOF'
+          import pkgutil
+          import backend.assistant
+          print("Assistant imports OK")
+          EOF
+
       - name: Run tests
         run: pytest -q
