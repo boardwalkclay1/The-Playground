@@ -3,46 +3,58 @@
 <head>
   <meta charset="UTF-8" />
   <title>Boardwalk Playground · Cloudflare</title>
-  <link rel="stylesheet" href="/static/style.css" />
+  <link rel="stylesheet" href="/frontend/static/style.css" />
 </head>
 
 <body class="layout-page">
+
+  <!-- TOP BAR -->
   <header class="topbar">
     <div class="topbar-left">
-      <img src="/static/logo.png" class="logo" />
+      <img src="/frontend/static/logo.png" class="logo" />
       <span class="app-title">Boardwalk Playground · Cloudflare Suite</span>
     </div>
 
     <div class="topbar-right">
-      <a href="/" class="btn btn-ghost">Back to Dashboard</a>
+      <a href="/" class="btn btn-ghost">Back</a>
       <button id="theme-toggle" class="btn btn-ghost">Theme: Industrial</button>
     </div>
   </header>
 
+  <!-- MAIN -->
   <main class="page-main">
+
     <section class="panel">
+
       <h2>Cloudflare Controls</h2>
 
+      <!-- PROJECT FIELD -->
       <div class="field-row">
-        <label>Project:
-          <input id="cf-project" placeholder="project-name" />
+        <label class="bubble-field">
+          <span>Project</span>
+          <input id="cf-project" class="input" placeholder="project-name" />
         </label>
       </div>
 
-      <div class="button-grid" style="margin-top:10px;">
+      <!-- BUTTON GRID -->
+      <div class="button-grid" style="margin-top:12px;">
         <button class="btn btn-primary" id="cf-deploy-worker">Deploy Worker</button>
         <button class="btn btn-primary" id="cf-deploy-pages">Deploy Pages</button>
         <button class="btn btn-primary" id="cf-create-d1">Create D1</button>
         <button class="btn btn-primary" id="cf-create-r2">Create R2</button>
         <button class="btn btn-primary" id="cf-create-kv">Create KV</button>
         <button class="btn btn-primary" id="cf-create-queue">Create Queue</button>
+        <button class="btn btn-primary" id="cf-inspect-bindings">Inspect Bindings</button>
+        <button class="btn btn-primary" id="cf-validate-wrangler">Validate wrangler.toml</button>
       </div>
 
-      <div class="log-panel" id="cf-log" style="margin-top:12px;"></div>
+      <!-- LOG OUTPUT -->
+      <div id="cf-log" class="log-panel" style="margin-top:16px;"></div>
+
     </section>
+
   </main>
 
-  <script src="/static/app.js"></script>
+  <script src="/frontend/static/app.js"></script>
 </body>
 </html>
-
