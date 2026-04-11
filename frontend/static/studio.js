@@ -1,5 +1,5 @@
 // static/studio.js
-// Single-file frontend for Project Manager, File Tree, Editor, Terminal, Microcontroller
+// Unified frontend for Projects, File Tree, Editor, Terminal, Microcontroller Builder
 
 let currentProject = null;
 let currentFile = null;
@@ -13,7 +13,7 @@ document.addEventListener("DOMContentLoaded", () => {
   refreshProjects();
 });
 
-// simple fetch helper
+/* ---------------- Helpers ---------------- */
 async function postJSON(path, body) {
   const res = await fetch(path, {
     method: "POST",
@@ -47,9 +47,7 @@ function wireProjectManager() {
     if (res.success) {
       refreshProjects();
       document.getElementById("pm-new-name").value = "";
-    } else {
-      alert(res.error || "Create failed");
-    }
+    } else alert(res.error || "Create failed");
   });
 }
 
@@ -120,6 +118,7 @@ async function refreshFileTree() {
   root.innerHTML = "";
   const ul = document.createElement("ul");
   ul.className = "ft-ul";
+
   function render(nodes, parent) {
     nodes.forEach((n) => {
       const li = document.createElement("li");
@@ -139,10 +138,10 @@ async function refreshFileTree() {
       parent.appendChild(li);
     });
   }
+
   render(res.tree, ul);
   root.appendChild(ul);
 
-  // file operations UI
   const ops = document.createElement("div");
   ops.className = "ft-ops";
   ops.innerHTML = `
@@ -183,9 +182,7 @@ async function refreshFileTree() {
 }
 
 /* ---------------- Editor ---------------- */
-function wireEditorActions() {
-  // editor actions are triggered by openFile
-}
+function wireEditorActions() {}
 
 async function openFile(path) {
   if (!currentProject) return alert("No project selected");
@@ -197,6 +194,7 @@ async function openFile(path) {
     return;
   }
   currentFile = path;
+
   const wrapper = document.createElement("div");
   wrapper.className = "editor";
 
@@ -212,7 +210,11 @@ async function openFile(path) {
   save.className = "btn";
   save.textContent = "Save";
   save.addEventListener("click", async () => {
-    const r = await postJSON("/api/files/write", { project_name: currentProject, path: currentFile, content: ta.value });
+    const r = await postJSON("/api/files/write", {
+      project_name: currentProject,
+      path: currentFile,
+      content: ta.value,
+    });
     if (r.success) {
       alert("Saved");
       refreshFileTree();
@@ -244,46 +246,134 @@ function wireTerminal() {
     if (!currentProject) return alert("Select a project first");
     const out = document.getElementById("term-out");
     out.textContent = "Running...";
-    const res = await postJSON("/api/terminal/run", { project_name: currentProject, command: cmd });
+    const res = await postJSON("/api/terminal/run", {
+      project_name: currentProject,
+      command: cmd,
+    });
     out.textContent = JSON.stringify(res, null, 2);
   });
 }
 
-/* ---------------- Microcontroller ---------------- */
+/* ---------------- Microcontroller Builder ---------------- */
 function wireMicrocontroller() {
   const panel = document.getElementById("panel-microcontroller");
   if (!panel) return;
+
   panel.innerHTML = `
     <h3>Microcontroller Builder</h3>
-    <textarea id="mcu-prompt" placeholder="Describe firmware or sketch"></textarea>
-    <div>
+
+    <textarea id="mcu-prompt" placeholder="Describe the ESP32 firmware you want..."></textarea>
+
+    <div style="margin-top:8px;">
       <input id="mcu-project" placeholder="project name (optional)" />
+    </div>
+
+    <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">
+      <select id="mcu-board" class="btn small">
+        <option value="">Board: auto</option>
+      </select>
+
+      <select id="mcu-template" class="btn small">
+        <option value="">Template: none</option>
+      </select>
+
+      <select id="mcu-example" class="btn small">
+        <option value="">Example: ESP32 pack</option>
+        <option value="esp32-wifi-scan">WiFi Scan</option>
+        <option value="esp32-wifi-connect">WiFi Connect</option>
+        <option value="esp32-ble-uart">BLE UART</option>
+      </select>
+    </div>
+
+    <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">
+      <input id="mcu-baud" type="number" placeholder="Baud (115200)" />
+      <input id="mcu-port" placeholder="Port (auto)" />
+      <select id="mcu-flash-mode" class="btn small">
+        <option value="">Flash mode</option>
+        <option value="dio">DIO</option>
+        <option value="qio">QIO</option>
+      </select>
+      <select id="mcu-flash-freq" class="btn small">
+        <option value="">Flash freq</option>
+        <option value="40m">40 MHz</option>
+        <option value="80m">80 MHz</option>
+      </select>
+    </div>
+
+    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
       <button id="mcu-gen" class="btn">Generate Firmware</button>
       <button id="mcu-flash" class="btn">Flash (stub)</button>
+      <button id="mcu-open-lab" class="btn">Open MCU Lab</button>
     </div>
+
     <pre id="mcu-out"></pre>
   `;
+
+  loadMCUBoards();
+  loadMCUTemplates();
+
   document.getElementById("mcu-gen").addEventListener("click", async () => {
     const prompt = document.getElementById("mcu-prompt").value.trim();
+    if (!prompt) return alert("Enter firmware description.");
+
     const project = document.getElementById("mcu-project").value.trim() || "mcu-sandbox";
-    if (!prompt) return alert("Enter prompt");
+    const board = document.getElementById("mcu-board").value || null;
+    const template = document.getElementById("mcu-template").value || null;
+    const example = document.getElementById("mcu-example").value || null;
+
     const out = document.getElementById("mcu-out");
-    out.textContent = "Generating...";
-    const res = await postJSON("/api/microcontroller/generate", { project_name: project, prompt });
+    out.textContent = "Generating firmware...";
+
+    const res = await postJSON("/mcu/generate", {
+      project_name: project,
+      prompt,
+      board_id: board,
+      template_id: template || example || null,
+      merge_strategy: "overwrite",
+    });
+
     out.textContent = JSON.stringify(res, null, 2);
-    // refresh file tree if sandbox used
+
     if (currentProject === project) refreshFileTree();
   });
+
   document.getElementById("mcu-flash").addEventListener("click", async () => {
     const project = document.getElementById("mcu-project").value.trim() || "mcu-sandbox";
     const out = document.getElementById("mcu-out");
     out.textContent = "Flashing (stub)...";
-    const res = await postJSON("/api/microcontroller/flash", { project_name: project, port: null });
+
+    const res = await postJSON("/mcu/flash", { project_name: project });
     out.textContent = JSON.stringify(res, null, 2);
+  });
+
+  document.getElementById("mcu-open-lab").addEventListener("click", () => {
+    window.open("/static/microcontroller-lab.html", "_blank");
   });
 }
 
-/* ---------------- Preview helper ---------------- */
+async function loadMCUBoards() {
+  const res = await getJSON("/mcu/boards");
+  const sel = document.getElementById("mcu-board");
+  res.boards.forEach((b) => {
+    const opt = document.createElement("option");
+    opt.value = b.id;
+    opt.textContent = b.name;
+    sel.appendChild(opt);
+  });
+}
+
+async function loadMCUTemplates() {
+  const res = await getJSON("/mcu/templates");
+  const sel = document.getElementById("mcu-template");
+  res.templates.forEach((t) => {
+    const opt = document.createElement("option");
+    opt.value = t.id;
+    opt.textContent = t.name;
+    sel.appendChild(opt);
+  });
+}
+
+/* ---------------- Preview ---------------- */
 function loadPreview(project) {
   const panel = document.getElementById("panel-preview");
   if (!panel) return;
