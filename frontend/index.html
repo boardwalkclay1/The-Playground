@@ -42,7 +42,7 @@
     <!-- MAIN WORK AREA -->
     <main class="pg-main">
 
-      <!-- MAIN SCREEN (TOP) -->
+      <!-- MAIN SCREEN -->
       <section class="pg-main-screen" id="main-screen">
         <div class="pg-main-header">Main Screen</div>
         <div id="main-content" class="pg-main-content">
@@ -63,7 +63,7 @@
         <!-- DOCK PANELS -->
         <div class="pg-dock-panels">
 
-          <!-- TERMINAL PANEL -->
+          <!-- TERMINAL -->
           <div class="pg-dock-panel" id="dock-terminal">
             <div class="pg-terminal-output" id="terminal-output"></div>
             <div class="pg-terminal-input-row">
@@ -73,12 +73,12 @@
             </div>
           </div>
 
-          <!-- ERRORS PANEL -->
+          <!-- ERRORS -->
           <div class="pg-dock-panel hidden" id="dock-errors">
             <div class="pg-errors-output" id="errors-output"></div>
           </div>
 
-          <!-- AI PANEL -->
+          <!-- AI -->
           <div class="pg-dock-panel hidden" id="dock-ai">
             <div class="pg-ai-output" id="ai-output"></div>
             <div class="pg-ai-input-row">
@@ -94,20 +94,20 @@
 
   </div>
 
-  <!-- SCRIPT: PANEL SWITCHING + DOCK LOGIC + THEME -->
+  <!-- THEME + DOCK LOGIC -->
   <script>
     document.addEventListener("DOMContentLoaded", () => {
 
-      // SIDEBAR NAVIGATION
+      // Sidebar placeholder (real logic in app.js)
       document.querySelectorAll(".pg-nav-btn").forEach(btn => {
         btn.addEventListener("click", () => {
           const panel = btn.dataset.panel;
           document.getElementById("main-content").innerHTML =
-            `<h2>${panel}</h2><p class="muted">Panel content will load here.</p>`;
+            `<h2>${panel}</h2><p class="muted">Loading...</p>`;
         });
       });
 
-      // DOCK TAB SWITCHING
+      // Dock tabs
       const dockTabs = document.querySelectorAll(".pg-dock-tab");
       dockTabs.forEach(tab => {
         tab.addEventListener("click", () => {
@@ -122,7 +122,7 @@
         });
       });
 
-      // THEME TOGGLE
+      // Theme toggle
       document.getElementById("theme-toggle").addEventListener("click", () => {
         const current = document.documentElement.getAttribute("data-theme");
         const next = current === "industrial" ? "gold" : "industrial";
@@ -132,6 +132,7 @@
     });
   </script>
 
+  <!-- MAIN APP LOGIC -->
   <script src="static/app.js"></script>
 
 </body>
