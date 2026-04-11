@@ -2,20 +2,35 @@
 <html data-theme="industrial">
 <head>
   <meta charset="UTF-8" />
-  <title>Boardwalk Playground · Capabilities</title>
-  <link rel="stylesheet" href="/static/style.css" />
+  <title>Boardwalk Playground · Capabilities & Glossary</title>
+  <link rel="stylesheet" href="/frontend/static/style.css" />
+
   <style>
+    .search-bar {
+      margin-bottom: 20px;
+      width: 100%;
+    }
+    .search-bar input {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--bg-panel);
+      color: var(--text);
+      font-size: 14px;
+    }
+
     .dropdown {
       border: 1px solid var(--border);
-      border-radius: 8px;
-      margin-bottom: 12px;
+      border-radius: 10px;
+      margin-bottom: 14px;
       background: var(--bg-panel);
       cursor: pointer;
-      padding: 12px 14px;
+      padding: 14px 16px;
     }
     .dropdown-title {
       font-weight: 700;
-      font-size: 14px;
+      font-size: 15px;
       color: var(--accent);
       display: flex;
       justify-content: space-between;
@@ -24,275 +39,216 @@
     }
     .dropdown-content {
       display: none;
-      margin-top: 10px;
-      font-size: 12px;
+      margin-top: 12px;
+      font-size: 13px;
       color: var(--text);
       line-height: 1.6em;
     }
     .dropdown.open .dropdown-content {
       display: block;
     }
+
+    h3.section-title {
+      margin-top: 30px;
+      margin-bottom: 10px;
+      font-size: 18px;
+      color: var(--accent);
+      letter-spacing: 0.05em;
+    }
   </style>
 </head>
 
 <body class="layout-page">
+
+  <!-- TOP BAR -->
   <header class="topbar">
     <div class="topbar-left">
-      <img src="/static/logo.png" class="logo" />
-      <span class="app-title">Boardwalk Playground · Capabilities</span>
+      <img src="/frontend/static/logo.png" class="logo" />
+      <span class="app-title">Boardwalk Playground · Capabilities & Glossary</span>
     </div>
 
     <div class="topbar-right">
-      <a href="/" class="btn btn-ghost">Back to Dashboard</a>
+      <a href="/" class="btn btn-ghost">Back</a>
       <button id="theme-toggle" class="btn btn-ghost">Theme: Industrial</button>
     </div>
   </header>
 
+  <!-- MAIN -->
   <main class="page-main">
     <section class="panel">
-      <h2>Capabilities · Complete Guide</h2>
 
-      <!-- CORE ENGINE -->
+      <h2>Capabilities · Complete System Manual</h2>
+
+      <!-- SEARCH BAR -->
+      <div class="search-bar">
+        <input id="cap-search" placeholder="Search capabilities, engines, glossary terms…" />
+      </div>
+
+      <!-- ========================= -->
+      <!--       CAPABILITIES        -->
+      <!-- ========================= -->
+
+      <h3 class="section-title">Core System Engines</h3>
+
       <div class="dropdown">
-        <div class="dropdown-title">Core Engine · What This Platform Actually Is <span>▼</span></div>
+        <div class="dropdown-title">Core Engine · What Boardwalk Playground Is <span>▼</span></div>
         <div class="dropdown-content">
-          Boardwalk Playground is not a dashboard.  
-          It is a **local-first software factory**.  
-          It can generate entire apps, Workers, APIs, UIs, templates, and full project structures.  
-          <br><br>
-          This is the machine that builds the apps you want:  
-          music generator, comic studio, rideshare, laundry, skating, Roll Show, video generator — all of it.  
-          <br><br>
-          You define the blueprint.  
-          The Playground builds the project, files, Worker, API calls, UI pages, and deploy pipeline.
+          Boardwalk Playground is a **local-first software factory**.  
+          It generates, edits, runs, previews, and deploys entire apps.  
+          It is the machine that builds your ecosystem:  
+          music generator, comic studio, rideshare, laundry, skating, Roll Show, video generator, and more.
         </div>
       </div>
 
-      <!-- PROJECT ENGINE -->
       <div class="dropdown">
         <div class="dropdown-title">Project Workspace Engine <span>▼</span></div>
         <div class="dropdown-content">
-          This engine manages multiple full-stack apps at once.  
-          Each app lives in its own folder under `/projects`.  
-          <br><br>
-          **How you use it:**  
-          - Create a folder → it becomes a project  
-          - Switch projects instantly  
-          - Everything (edit, run, deploy) happens inside the selected project  
-          <br>
-          This is how you run a whole ecosystem from one dashboard.
+          Manages multiple full-stack apps at once.  
+          Each app lives under `/projects`.  
+          Switch projects instantly.  
+          All editing, running, previewing, and deploying happens inside the selected project.
         </div>
       </div>
 
-      <!-- FILE ENGINE -->
       <div class="dropdown">
         <div class="dropdown-title">File System Engine <span>▼</span></div>
         <div class="dropdown-content">
-          This engine can create, edit, delete, and generate files and folders.  
-          It is the backbone of all app generation.  
-          <br><br>
-          **It can generate:**  
-          - HTML, CSS, JS  
-          - Workers  
-          - API routes  
-          - Config files  
-          - Templates  
-          - Entire project structures  
-          <br>
-          This is how the Playground builds apps from scratch.
+          Creates, edits, deletes, and generates files and folders.  
+          Generates HTML, CSS, JS, Workers, APIs, templates, and full project structures.
         </div>
       </div>
 
-      <!-- WORKER ENGINE -->
       <div class="dropdown">
-        <div class="dropdown-title">Worker Generator & Cloudflare Engine <span>▼</span></div>
+        <div class="dropdown-title">Editor Engine <span>▼</span></div>
         <div class="dropdown-content">
-          The Playground can generate Cloudflare Workers, connect them, and deploy them.  
-          <br><br>
-          **It can create:**  
-          - worker.js  
-          - wrangler.toml  
-          - API routes  
-          - Bindings (D1, R2, KV, Queues)  
-          - Deployment scripts  
-          <br><br>
-          **It can deploy:**  
-          - Workers  
-          - Pages  
-          - D1  
-          - R2  
-          - KV  
-          - Queues  
-          <br>
-          This is how your apps get real backends.
+          Full-screen industrial editor.  
+          Supports load, save, new file, delete file.  
+          Connected directly to the File System Engine.
         </div>
       </div>
 
-      <!-- API ENGINE -->
       <div class="dropdown">
-        <div class="dropdown-title">API Engine · Call ANY API <span>▼</span></div>
+        <div class="dropdown-title">Preview Engine <span>▼</span></div>
         <div class="dropdown-content">
-          The Playground can generate API clients and connect to ANY external API.  
-          <br><br>
-          **It can call:**  
-          - AI APIs  
-          - Music APIs  
-          - Video APIs  
-          - Payment APIs  
-          - Map APIs  
-          - Weather APIs  
-          - ANY REST or GraphQL endpoint  
-          <br><br>
-          **It can generate:**  
-          - Worker → external API calls  
-          - Frontend → Worker → external API calls  
-          - Authenticated requests  
-          - Streaming responses  
-          <br>
-          This is how your apps talk to the world.
+          Live preview of any project.  
+          Auto-refresh.  
+          Error capture.  
+          Connected to Logs + Errors.
         </div>
       </div>
 
-      <!-- UI ENGINE -->
       <div class="dropdown">
-        <div class="dropdown-title">UI Generator · Pages & Panels <span>▼</span></div>
+        <div class="dropdown-title">Logs Engine <span>▼</span></div>
         <div class="dropdown-content">
-          The Playground can generate UI pages for any domain.  
-          <br><br>
-          **It can create:**  
-          - Dashboard panels  
-          - Full pages  
-          - Forms  
-          - Editors  
-          - Media viewers  
-          - Custom interfaces  
-          <br>
-          This is how each app gets its own UI.
+          Streams system logs, generator logs, and error logs in real time.  
+          Used by every engine in the Playground.
         </div>
       </div>
 
-      <!-- DOMAIN APPS -->
-      <h3 style="margin-top:20px;">Domain App Families This Playground Can Build</h3>
-
-      <!-- MUSIC -->
       <div class="dropdown">
-        <div class="dropdown-title">Music Generator App <span>▼</span></div>
+        <div class="dropdown-title">App Generator Engine <span>▼</span></div>
         <div class="dropdown-content">
-          The Playground can generate a full music creation app.  
-          <br><br>
-          **Includes:**  
-          - Track generator UI  
-          - Metadata editor  
-          - Playlist builder  
-          - Worker backend  
-          - API calls to music models  
-          - Export system  
+          Generates entire apps from prompts.  
+          Creates folders, files, Workers, APIs, UI pages, templates, and deploy pipelines.  
+          Logs every step.
         </div>
       </div>
 
-      <!-- COMICS -->
       <div class="dropdown">
-        <div class="dropdown-title">Comic Book Studio <span>▼</span></div>
+        <div class="dropdown-title">Cloudflare Suite <span>▼</span></div>
         <div class="dropdown-content">
-          The Playground can generate a full comic creation studio.  
-          <br><br>
-          **Includes:**  
-          - Page templates  
-          - Panel layouts  
-          - Speech bubble components  
-          - Image upload  
-          - Export to PDF/CBZ  
-          - Worker rendering  
+          Deploy Workers, Pages, D1, R2, KV, Queues.  
+          Inspect bindings.  
+          Validate wrangler.toml.  
+          Fully integrated with Logs.
         </div>
       </div>
 
-      <!-- RIDESHARE -->
       <div class="dropdown">
-        <div class="dropdown-title">Rideshare App <span>▼</span></div>
+        <div class="dropdown-title">Microcontroller Lab · MCU Lab Pro <span>▼</span></div>
         <div class="dropdown-content">
-          The Playground can generate a rideshare sandbox.  
-          <br><br>
-          **Includes:**  
-          - Driver/rider schema  
-          - Trip requests  
-          - Map UI  
-          - Pricing logic  
-          - Worker backend  
+          Full breadboard simulator.  
+          Board awareness (ESP32, Arduino, RP2040).  
+          Component awareness (LEDs, sensors, motors).  
+          Wire drawing, auto-routing, pin validation.  
+          Code generation from wiring.  
+          Firmware flashing.
         </div>
       </div>
 
-      <!-- LAUNDRY -->
-      <div class="dropdown">
-        <div class="dropdown-title">Laundry App <span>▼</span></div>
-        <div class="dropdown-content">
-          The Playground can generate a laundry operations app.  
-          <br><br>
-          **Includes:**  
-          - Pickup/dropoff flows  
-          - Order tracking  
-          - Time slots  
-          - Worker backend  
-        </div>
-      </div>
+      <!-- ========================= -->
+      <!--      DOMAIN APPS          -->
+      <!-- ========================= -->
 
-      <!-- SKATING -->
-      <div class="dropdown">
-        <div class="dropdown-title">Skating App <span>▼</span></div>
-        <div class="dropdown-content">
-          The Playground can generate a skating flow app.  
-          <br><br>
-          **Includes:**  
-          - Sessions  
-          - Spots  
-          - Combos  
-          - Video clips  
-          - BeltLine runs  
-          - Media storage  
-        </div>
-      </div>
+      <h3 class="section-title">Domain App Families</h3>
 
-      <!-- ROLL SHOW -->
-      <div class="dropdown">
-        <div class="dropdown-title">Roll Show Studio <span>▼</span></div>
-        <div class="dropdown-content">
-          The Playground can generate the full Roll Show platform.  
-          <br><br>
-          **Includes:**  
-          - Episodes  
-          - Acts  
-          - Performers  
-          - Rights  
-          - Payouts  
-          - Lead gen  
-          - Media library  
-        </div>
-      </div>
+      <div class="dropdown"><div class="dropdown-title">Music Generator App <span>▼</span></div><div class="dropdown-content">Track generator, metadata editor, playlist builder, Worker backend, export system.</div></div>
+      <div class="dropdown"><div class="dropdown-title">Comic Book Studio <span>▼</span></div><div class="dropdown-content">Page templates, panel layouts, speech bubbles, image upload, PDF export.</div></div>
+      <div class="dropdown"><div class="dropdown-title">Rideshare App <span>▼</span></div><div class="dropdown-content">Driver/rider schema, trip requests, map UI, pricing logic, Worker backend.</div></div>
+      <div class="dropdown"><div class="dropdown-title">Laundry App <span>▼</span></div><div class="dropdown-content">Pickup/dropoff flows, order tracking, time slots, Worker backend.</div></div>
+      <div class="dropdown"><div class="dropdown-title">Skating App <span>▼</span></div><div class="dropdown-content">Sessions, spots, combos, video clips, BeltLine runs, media storage.</div></div>
+      <div class="dropdown"><div class="dropdown-title">Roll Show Studio <span>▼</span></div><div class="dropdown-content">Episodes, acts, performers, rights, payouts, lead gen, media library.</div></div>
+      <div class="dropdown"><div class="dropdown-title">Video Generator App <span>▼</span></div><div class="dropdown-content">Shot list schema, script mapping, render hooks, Worker backend.</div></div>
 
-      <!-- VIDEO -->
-      <div class="dropdown">
-        <div class="dropdown-title">Video Generator App <span>▼</span></div>
-        <div class="dropdown-content">
-          The Playground can generate a full video generation app.  
-          <br><br>
-          **Includes:**  
-          - Shot list schema  
-          - Script → scene mapping  
-          - Render/export hooks  
-          - Worker backend  
-        </div>
-      </div>
+      <!-- ========================= -->
+      <!--       WORD GLOSSARY       -->
+      <!-- ========================= -->
+
+      <h3 class="section-title">Word Glossary · Definitions</h3>
+
+      <div class="dropdown"><div class="dropdown-title">Panel <span>▼</span></div><div class="dropdown-content">A full-screen cinematic section of the Playground UI. Panels replace pages.</div></div>
+
+      <div class="dropdown"><div class="dropdown-title">Project <span>▼</span></div><div class="dropdown-content">A folder under `/projects` containing a full app: frontend, backend, assets, config.</div></div>
+
+      <div class="dropdown"><div class="dropdown-title">Worker <span>▼</span></div><div class="dropdown-content">A Cloudflare backend script that handles APIs, logic, storage, and deployment.</div></div>
+
+      <div class="dropdown"><div class="dropdown-title">Binding <span>▼</span></div><div class="dropdown-content">A connection between a Worker and a Cloudflare resource (D1, R2, KV, Queue).</div></div>
+
+      <div class="dropdown"><div class="dropdown-title">D1 <span>▼</span></div><div class="dropdown-content">Cloudflare’s SQLite database. Used for structured data.</div></div>
+
+      <div class="dropdown"><div class="dropdown-title">R2 <span>▼</span></div><div class="dropdown-content">Cloudflare’s object storage. Used for media, files, exports, uploads.</div></div>
+
+      <div class="dropdown"><div class="dropdown-title">KV <span>▼</span></div><div class="dropdown-content">Cloudflare’s key-value store. Used for config, flags, small data.</div></div>
+
+      <div class="dropdown"><div class="dropdown-title">Queue <span>▼</span></div><div class="dropdown-content">Cloudflare’s job queue system. Used for background tasks.</div></div>
+
+      <div class="dropdown"><div class="dropdown-title">Generator <span>▼</span></div><div class="dropdown-content">The engine that creates apps, files, Workers, and UI from prompts.</div></div>
+
+      <div class="dropdown"><div class="dropdown-title">MCU <span>▼</span></div><div class="dropdown-content">Microcontroller Unit. Used in the MCU Lab for hardware simulation.</div></div>
+
+      <div class="dropdown"><div class="dropdown-title">Pin Map <span>▼</span></div><div class="dropdown-content">A list of all pins on a microcontroller board and what they support.</div></div>
+
+      <div class="dropdown"><div class="dropdown-title">Auto-Routing <span>▼</span></div><div class="dropdown-content">Automatic wire drawing between components in the MCU Lab.</div></div>
+
+      <div class="dropdown"><div class="dropdown-title">Preview <span>▼</span></div><div class="dropdown-content">Live rendering of your app inside the Playground.</div></div>
+
+      <div class="dropdown"><div class="dropdown-title">Logs <span>▼</span></div><div class="dropdown-content">Real-time output from the system, generator, Worker, and errors.</div></div>
+
+      <div class="dropdown"><div class="dropdown-title">Bubble Field <span>▼</span></div><div class="dropdown-content">Boardwalk’s signature rounded input style used across the UI.</div></div>
+
+      <div class="dropdown"><div class="dropdown-title">Industrial Theme <span>▼</span></div><div class="dropdown-content">The default Boardwalk theme: dark, neon, metallic, cinematic.</div></div>
 
     </section>
   </main>
 
-  <script src="/static/app.js"></script>
+  <script src="/frontend/static/app.js"></script>
 
   <script>
+    // Dropdown toggle
     document.querySelectorAll(".dropdown").forEach(drop => {
-      drop.addEventListener("click", () => {
-        drop.classList.toggle("open");
+      drop.addEventListener("click", () => drop.classList.toggle("open"));
+    });
+
+    // Search filter
+    const search = document.getElementById("cap-search");
+    search.addEventListener("input", () => {
+      const q = search.value.toLowerCase();
+      document.querySelectorAll(".dropdown").forEach(drop => {
+        const text = drop.innerText.toLowerCase();
+        drop.style.display = text.includes(q) ? "block" : "none";
       });
     });
   </script>
+
 </body>
 </html>
