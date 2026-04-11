@@ -4,192 +4,275 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 from typing import List, Dict, Any
 import os, json, subprocess
+import openai
 
 router = APIRouter()
 
-# ---------- MODELS ----------
+# ---------------------------------------------------------
+# CONFIG: MULTI‑AI SUPER ENGINE
+# ---------------------------------------------------------
+
+openai.api_key = os.getenv("OPENAI_API_KEY")
+
+MODELS = {
+    "reasoning": "gpt-4o",
+    "coding": "gpt-4o-mini",
+    "fast": "gpt-4o-mini",
+    "mcu": "gpt-4o-mini",
+}
+
+# ---------------------------------------------------------
+# MODELS
+# ---------------------------------------------------------
 
 class AssistantRequest(BaseModel):
-  prompt: str
-  project_name: str
+    prompt: str
+    project_name: str
 
 class AssistantResponse(BaseModel):
-  success: bool
-  message: str
-  actions: List[Dict[str, Any]] = []
-  logs: List[str] = []
+    success: bool
+    message: str
+    actions: List[Dict[str, Any]] = []
+    logs: List[str] = []
 
-# ---------- CHAT HISTORY PER PROJECT ----------
+# ---------------------------------------------------------
+# CHAT HISTORY
+# ---------------------------------------------------------
 
 def history_path(project_name: str) -> str:
-  os.makedirs("./projects", exist_ok=True)
-  return f"./projects/{project_name}/.assistant_history.json"
+    os.makedirs("./projects", exist_ok=True)
+    return f"./projects/{project_name}/.assistant_history.json"
 
 def load_history(project_name: str) -> List[Dict[str, str]]:
-  path = history_path(project_name)
-  if not os.path.exists(path):
-    return []
-  try:
-    with open(path, "r", encoding="utf-8") as f:
-      return json.load(f)
-  except Exception:
-    return []
+    path = history_path(project_name)
+    if not os.path.exists(path):
+        return []
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except:
+        return []
 
-def save_history(project_name: str, history: List[Dict[str, str]]) -> None:
-  path = history_path(project_name)
-  os.makedirs(os.path.dirname(path), exist_ok=True)
-  with open(path, "w", encoding="utf-8") as f:
-    json.dump(history[-40:], f, ensure_ascii=False, indent=2)  # keep last 40 turns
+def save_history(project_name: str, history: List[Dict[str, str]]):
+    path = history_path(project_name)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(history[-40:], f, indent=2)
 
-# ---------- TOOLS ----------
+# ---------------------------------------------------------
+# TOOLS
+# ---------------------------------------------------------
 
 def tool_read_file(project_name: str, path: str) -> str:
-  base = f"./projects/{project_name}"
-  full = os.path.normpath(os.path.join(base, path))
-  if not full.startswith(os.path.abspath(base)):
-    return "ERROR: invalid path"
-  try:
-    with open(full, "r", encoding="utf-8") as f:
-      return f.read()
-  except Exception as e:
-    return f"ERROR: {e}"
+    base = f"./projects/{project_name}"
+    full = os.path.normpath(os.path.join(base, path))
+    if not full.startswith(os.path.abspath(base)):
+        return "ERROR: invalid path"
+    try:
+        with open(full, "r", encoding="utf-8") as f:
+            return f.read()
+    except Exception as e:
+        return f"ERROR: {e}"
 
 def tool_write_file(project_name: str, path: str, content: str) -> str:
-  base = f"./projects/{project_name}"
-  full = os.path.normpath(os.path.join(base, path))
-  if not full.startswith(os.path.abspath(base)):
-    return "ERROR: invalid path"
-  try:
-    os.makedirs(os.path.dirname(full), exist_ok=True)
-    with open(full, "w", encoding="utf-8") as f:
-      f.write(content)
-    return "OK"
-  except Exception as e:
-    return f"ERROR: {e}"
+    base = f"./projects/{project_name}"
+    full = os.path.normpath(os.path.join(base, path))
+    if not full.startswith(os.path.abspath(base)):
+        return "ERROR: invalid path"
+    try:
+        os.makedirs(os.path.dirname(full), exist_ok=True)
+        with open(full, "w", encoding="utf-8") as f:
+            f.write(content)
+        return "OK"
+    except Exception as e:
+        return f"ERROR: {e}"
 
 def tool_run_command(project_name: str, command: str) -> str:
-  base = f"./projects/{project_name}"
-  try:
-    proc = subprocess.run(
-      command,
-      shell=True,
-      cwd=base,
-      capture_output=True,
-      text=True,
-    )
-    return (
-      f"EXIT {proc.returncode}\n"
-      f"STDOUT:\n{proc.stdout}\n"
-      f"STDERR:\n{proc.stderr}"
-    )
-  except Exception as e:
-    return f"ERROR: {e}"
+    base = f"./projects/{project_name}"
+    try:
+        proc = subprocess.run(
+            command,
+            shell=True,
+            cwd=base,
+            capture_output=True,
+            text=True,
+        )
+        return (
+            f"EXIT {proc.returncode}\n"
+            f"STDOUT:\n{proc.stdout}\n"
+            f"STDERR:\n{proc.stderr}"
+        )
+    except Exception as e:
+        return f"ERROR: {e}"
 
 def tool_mcu_generate(project_name: str, prompt: str) -> str:
-  # hook into your existing MCU engine
-  # from .mcu import generate_firmware
-  # res = generate_firmware(project_name=project_name, prompt=prompt)
-  # return json.dumps(res, indent=2)
-  return "MCU TOOL STUB: wire this to your real MCU generator."
+    return f"MCU generation requested with prompt: {prompt}"
 
-# ---------- LLM CALL (PLUG YOUR PROVIDER HERE) ----------
+# ---------------------------------------------------------
+# REAL MULTI‑AI LLM CALL
+# ---------------------------------------------------------
 
-def call_llm(system_prompt: str, history: List[Dict[str, str]], tools: List[Dict[str, Any]]) -> Dict[str, Any]:
-  """
-  You plug your real LLM here (OpenAI, local, etc.).
-  It should return something like:
-  {
-    "type": "chat",
-    "message": "human-facing answer",
-    "tool_calls": [
-      {"tool": "read_file", "args": {"path": "src/main.py"}},
-      {"tool": "write_file", "args": {"path": "src/main.py", "content": "..."}}
-    ]
-  }
-  For now this is a stub that just chats.
-  """
-  last_user = history[-1]["content"] if history else ""
-  return {
-    "type": "chat",
-    "message": f"(stub) I see: {last_user}",
-    "tool_calls": []
-  }
+def call_llm(system_prompt: str, history: List[Dict[str, str]], tools: List[Dict[str, Any]], mode="reasoning"):
+    model = MODELS.get(mode, MODELS["reasoning"])
 
-# ---------- ORCHESTRATOR ----------
+    messages = [{"role": "system", "content": system_prompt}]
+    messages.extend(history)
+
+    tool_defs = []
+    for t in tools:
+        if t["name"] == "read_file":
+            tool_defs.append({
+                "type": "function",
+                "function": {
+                    "name": "read_file",
+                    "description": t["description"],
+                    "parameters": {
+                        "type": "object",
+                        "properties": {"path": {"type": "string"}},
+                        "required": ["path"]
+                    }
+                }
+            })
+        elif t["name"] == "write_file":
+            tool_defs.append({
+                "type": "function",
+                "function": {
+                    "name": "write_file",
+                    "description": t["description"],
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "path": {"type": "string"},
+                            "content": {"type": "string"}
+                        },
+                        "required": ["path", "content"]
+                    }
+                }
+            })
+        elif t["name"] == "run_command":
+            tool_defs.append({
+                "type": "function",
+                "function": {
+                    "name": "run_command",
+                    "description": t["description"],
+                    "parameters": {
+                        "type": "object",
+                        "properties": {"command": {"type": "string"}},
+                        "required": ["command"]
+                    }
+                }
+            })
+        elif t["name"] == "mcu_generate":
+            tool_defs.append({
+                "type": "function",
+                "function": {
+                    "name": "mcu_generate",
+                    "description": t["description"],
+                    "parameters": {
+                        "type": "object",
+                        "properties": {"prompt": {"type": "string"}},
+                        "required": ["prompt"]
+                    }
+                }
+            })
+
+    resp = openai.chat.completions.create(
+        model=model,
+        messages=messages,
+        tools=tool_defs,
+        tool_choice="auto",
+    )
+
+    msg = resp.choices[0].message
+
+    tool_calls = []
+    if msg.tool_calls:
+        for tc in msg.tool_calls:
+            tool_calls.append({
+                "tool": tc.function.name,
+                "args": json.loads(tc.function.arguments or "{}")
+            })
+
+    return {
+        "type": "chat",
+        "message": msg.content or "",
+        "tool_calls": tool_calls
+    }
+
+# ---------------------------------------------------------
+# ORCHESTRATOR
+# ---------------------------------------------------------
 
 def run_agent(prompt: str, project_name: str) -> AssistantResponse:
-  logs: List[str] = []
-  actions: List[Dict[str, Any]] = []
+    logs = []
+    actions = []
 
-  # load history and append user
-  history = load_history(project_name)
-  history.append({"role": "user", "content": prompt})
+    history = load_history(project_name)
+    history.append({"role": "user", "content": prompt})
 
-  # define tools for the LLM (names + args schema)
-  tools = [
-    {"name": "read_file", "description": "Read a file from the project", "args": ["path"]},
-    {"name": "write_file", "description": "Write a file in the project", "args": ["path", "content"]},
-    {"name": "run_command", "description": "Run a shell command in the project directory", "args": ["command"]},
-    {"name": "mcu_generate", "description": "Generate microcontroller firmware", "args": ["prompt"]},
-  ]
+    tools = [
+        {"name": "read_file", "description": "Read a file", "args": ["path"]},
+        {"name": "write_file", "description": "Write a file", "args": ["path", "content"]},
+        {"name": "run_command", "description": "Run a shell command", "args": ["command"]},
+        {"name": "mcu_generate", "description": "Generate MCU firmware", "args": ["prompt"]},
+    ]
 
-  # call LLM
-  llm_result = call_llm(
-    system_prompt=(
-      "You are the Boardwalk Playground Studio assistant. "
-      "You can read/write files, run commands, and generate microcontroller code. "
-      "Always explain what you did in plain language."
-    ),
-    history=history,
-    tools=tools,
-  )
+    mode = (
+        "coding" if "code" in prompt.lower() else
+        "mcu" if "microcontroller" in prompt.lower() or "esp32" in prompt.lower() else
+        "reasoning"
+    )
 
-  # handle tool calls (loop until no more tools or you decide to stop)
-  for call in llm_result.get("tool_calls", []):
-    t = call.get("tool")
-    args = call.get("args", {}) or {}
-    if t == "read_file":
-      path = args.get("path", "")
-      result = tool_read_file(project_name, path)
-      actions.append({"type": "read_file", "path": path, "result": result})
-      logs.append(f"read_file:{path}")
-      history.append({"role": "tool", "name": "read_file", "content": result})
-    elif t == "write_file":
-      path = args.get("path", "")
-      content = args.get("content", "")
-      result = tool_write_file(project_name, path, content)
-      actions.append({"type": "write_file", "path": path, "status": result})
-      logs.append(f"write_file:{path}")
-      history.append({"role": "tool", "name": "write_file", "content": result})
-    elif t == "run_command":
-      cmd = args.get("command", "")
-      result = tool_run_command(project_name, cmd)
-      actions.append({"type": "run_command", "command": cmd, "result": result})
-      logs.append(f"run_command:{cmd}")
-      history.append({"role": "tool", "name": "run_command", "content": result})
-    elif t == "mcu_generate":
-      p = args.get("prompt", prompt)
-      result = tool_mcu_generate(project_name, p)
-      actions.append({"type": "mcu_generate", "prompt": p, "result": result})
-      logs.append("mcu_generate")
-      history.append({"role": "tool", "name": "mcu_generate", "content": result})
+    llm_result = call_llm(
+        system_prompt="You are the Boardwalk Playground Studio super‑assistant.",
+        history=history,
+        tools=tools,
+        mode=mode,
+    )
 
-  # final assistant message
-  message = llm_result.get("message", "No response.")
+    for call in llm_result.get("tool_calls", []):
+        t = call["tool"]
+        args = call["args"]
 
-  # append assistant to history and save
-  history.append({"role": "assistant", "content": message})
-  save_history(project_name, history)
+        if t == "read_file":
+            result = tool_read_file(project_name, args["path"])
+            actions.append({"type": "read_file", "path": args["path"], "result": result})
+            logs.append(f"read_file:{args['path']}")
+            history.append({"role": "tool", "name": "read_file", "content": result})
 
-  return AssistantResponse(
-    success=True,
-    message=message,
-    actions=actions,
-    logs=logs,
-  )
+        elif t == "write_file":
+            result = tool_write_file(project_name, args["path"], args["content"])
+            actions.append({"type": "write_file", "path": args["path"], "status": result})
+            logs.append(f"write_file:{args['path']}")
+            history.append({"role": "tool", "name": "write_file", "content": result})
 
-# ---------- ROUTE ----------
+        elif t == "run_command":
+            result = tool_run_command(project_name, args["command"])
+            actions.append({"type": "run_command", "command": args["command"], "result": result})
+            logs.append(f"run_command:{args['command']}")
+            history.append({"role": "tool", "name": "run_command", "content": result})
+
+        elif t == "mcu_generate":
+            result = tool_mcu_generate(project_name, args["prompt"])
+            actions.append({"type": "mcu_generate", "prompt": args["prompt"], "result": result})
+            logs.append("mcu_generate")
+            history.append({"role": "tool", "name": "mcu_generate", "content": result})
+
+    final_message = llm_result["message"]
+    history.append({"role": "assistant", "content": final_message})
+    save_history(project_name, history)
+
+    return AssistantResponse(
+        success=True,
+        message=final_message,
+        actions=actions,
+        logs=logs,
+    )
+
+# ---------------------------------------------------------
+# ROUTE
+# ---------------------------------------------------------
 
 @router.post("/api/assistant/run", response_model=AssistantResponse)
 async def assistant_run(req: AssistantRequest):
-  return run_agent(req.prompt, req.project_name)
+    return run_agent(req.prompt, req.project_name)
