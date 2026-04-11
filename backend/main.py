@@ -74,9 +74,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# IMPORTANT:
-# We DO NOT mount /static here.
-# Static files are served by the frontend server (python3 -m http.server 5173).
+# Static files served by frontend server (5173)
 
 
 # ============================================================
@@ -253,11 +251,12 @@ if terminal_router:
 
 
 # ============================================================
-# MCU ROUTER
+# MCU ROUTER (FIXED)
 # ============================================================
 
 if mcu_router:
-    app.include_router(mcu_router, prefix="/mcu")
+    # router already has prefix="/mcu"
+    app.include_router(mcu_router)
 
 
 # ============================================================
