@@ -1,18 +1,11 @@
 // static/app.js
 // Unified frontend for Generator, AI Assistant, Project Manager, File Tree, Editor, Terminal, Microcontroller, Preview, Logs, Errors
 
-// =====================================================
-// GLOBAL STATE
-// =====================================================
 let currentProjectName = null;
 let currentFilePath = null;
 
-// DOM shortcuts
 const $ = (id) => document.getElementById(id);
 
-// =====================================================
-// ON LOAD
-// =====================================================
 document.addEventListener("DOMContentLoaded", () => {
   initUI();
   bindPanels();
@@ -20,11 +13,31 @@ document.addEventListener("DOMContentLoaded", () => {
   refreshCapabilities();
 });
 
-// =====================================================
-// INIT UI
-// =====================================================
+/* ---------------- Helpers ---------------- */
+async function apiGet(path) {
+  try {
+    const res = await fetch(path);
+    return await res.json();
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+async function apiPost(path, body) {
+  try {
+    const res = await fetch(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body || {}),
+    });
+    return await res.json();
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+/* ---------------- Init ---------------- */
 function initUI() {
-  // Ensure required DOM nodes exist
   const required = [
     "generator-input",
     "generator-run",
@@ -46,72 +59,41 @@ function initUI() {
     "errors-output",
   ];
   required.forEach((id) => {
-    if (!$(id)) {
-      console.warn(`Missing DOM element: ${id}`);
-    }
+    if (!$(id)) console.warn("Missing DOM element:", id);
   });
 }
 
-// =====================================================
-// FETCH HELPERS
-// =====================================================
-async function apiGet(path) {
-  try {
-    const res = await fetch(path, { method: "GET" });
-    return await res.json();
-  } catch (err) {
-    console.error("GET", path, err);
-    return { success: false, error: err.message };
-  }
-}
-
-async function apiPost(path, body) {
-  try {
-    const res = await fetch(path, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body || {}),
-    });
-    return await res.json();
-  } catch (err) {
-    console.error("POST", path, err);
-    return { success: false, error: err.message };
-  }
-}
-
-// =====================================================
-// BIND PANELS
-// =====================================================
+/* ---------------- Bind Panels ---------------- */
 function bindPanels() {
   bindGenerator();
   bindAssistant();
   bindTerminal();
-  bindMicrocontroller();
+  bindMicrocontroller(); // upgraded
   bindProjectManagerUI();
-  // File tree and editor are dynamic; initial render below
   renderFileTreePlaceholder();
   renderEditorPlaceholder();
 }
 
-// =====================================================
-// GENERATOR
-// =====================================================
+/* ---------------- Generator ---------------- */
 function bindGenerator() {
   const runBtn = $("generator-run");
   if (!runBtn) return;
+
   runBtn.addEventListener("click", async () => {
-    const prompt = ($("generator-input") || {}).value || "";
+    const prompt = $("generator-input").value.trim();
     const logsEl = $("logs-output");
     const errorsEl = $("errors-output");
-    if (!prompt.trim()) {
-      if (errorsEl) errorsEl.textContent = "Generator prompt is empty.";
+
+    if (!prompt) {
+      errorsEl.textContent = "Generator prompt is empty.";
       return;
     }
 
     const projectName = `project-${Date.now()}`;
     currentProjectName = projectName;
-    if (logsEl) logsEl.textContent = `Starting generation for ${projectName}...\n`;
-    if (errorsEl) errorsEl.textContent = "";
+
+    logsEl.textContent = `Starting generation for ${projectName}...\n`;
+    errorsEl.textContent = "";
 
     const res = await apiPost("/api/generator/run", {
       prompt,
@@ -119,11 +101,13 @@ function bindGenerator() {
       app_type: "generic",
     });
 
-    if (res.logs && Array.isArray(res.logs)) {
-      logsEl.textContent = res.logs.map((l) => `[${(l.level || "info").toUpperCase()}] ${l.message}`).join("\n");
+    if (res.logs) {
+      logsEl.textContent = res.logs
+        .map((l) => `[${(l.level || "info").toUpperCase()}] ${l.message}`)
+        .join("\n");
     }
 
-    if (res.errors && res.errors.length) {
+    if (res.errors?.length) {
       errorsEl.textContent = res.errors.join("\n");
     }
 
@@ -133,116 +117,195 @@ function bindGenerator() {
       loadPreview(projectName);
       showMainMessage(`Generated ${projectName}`);
     } else {
-      if (errorsEl && res.error) errorsEl.textContent = res.error;
+      errorsEl.textContent = res.error || "Generation failed.";
     }
   });
 }
 
-// =====================================================
-// AI ASSISTANT
-// =====================================================
+/* ---------------- Assistant ---------------- */
 function bindAssistant() {
   const runBtn = $("assistant-run");
   if (!runBtn) return;
+
   runBtn.addEventListener("click", async () => {
-    const input = ($("assistant-input") || {}).value || "";
+    const input = $("assistant-input").value.trim();
     const out = $("assistant-output");
-    if (!input.trim()) {
-      if (out) out.textContent = "Assistant prompt is empty.";
+
+    if (!input) {
+      out.textContent = "Assistant prompt is empty.";
       return;
     }
     if (!currentProjectName) {
-      if (out) out.textContent = "No project selected.";
+      out.textContent = "No project selected.";
       return;
     }
 
-    if (out) out.textContent = "Assistant running...\n";
+    out.textContent = "Assistant running...\n";
+
     const res = await apiPost("/api/assistant/run", {
       prompt: input,
       project_name: currentProjectName,
     });
 
-    if (out) out.textContent = JSON.stringify(res, null, 2);
-    // refresh file tree/editor if assistant modified files
+    out.textContent = JSON.stringify(res, null, 2);
+
     await refreshFileTree(currentProjectName);
-    if (currentFilePath) {
-      // if current file exists, reload it
-      await openFile(currentFilePath);
-    }
+    if (currentFilePath) await openFile(currentFilePath);
   });
 }
 
-// =====================================================
-// TERMINAL
-// =====================================================
+/* ---------------- Terminal ---------------- */
 function bindTerminal() {
   const runBtn = $("terminal-run");
   if (!runBtn) return;
+
   runBtn.addEventListener("click", async () => {
-    const cmd = ($("terminal-input") || {}).value || "";
+    const cmd = $("terminal-input").value.trim();
     const out = $("terminal-output");
-    if (!cmd.trim()) {
-      if (out) out.textContent = "Command is empty.";
+
+    if (!cmd) {
+      out.textContent = "Command is empty.";
       return;
     }
     if (!currentProjectName) {
-      if (out) out.textContent = "No project selected.";
+      out.textContent = "No project selected.";
       return;
     }
 
-    if (out) out.textContent = `Running: ${cmd}\n`;
-    // Use terminal endpoint if available; fallback to assistant run
+    out.textContent = `Running: ${cmd}\n`;
+
     const res = await apiPost("/api/terminal/run", {
       project_name: currentProjectName,
       command: cmd,
     });
 
-    if (out) out.textContent = JSON.stringify(res, null, 2);
-    // update logs/errors panels if present
-    if (res.logs && Array.isArray(res.logs)) {
-      $("logs-output").textContent = res.logs.map((l) => `[${l.level}] ${l.message}`).join("\n");
+    out.textContent = JSON.stringify(res, null, 2);
+
+    if (res.logs) {
+      $("logs-output").textContent = res.logs
+        .map((l) => `[${l.level}] ${l.message}`)
+        .join("\n");
     }
-    if (res.error) {
-      $("errors-output").textContent = res.error;
-    }
+    if (res.error) $("errors-output").textContent = res.error;
   });
 }
 
-// =====================================================
-// MICROCONTROLLER PANEL
-// =====================================================
+/* ---------------- MCU PANEL (A2) ---------------- */
 function bindMicrocontroller() {
   const runBtn = $("mcu-run");
   if (!runBtn) return;
-  runBtn.addEventListener("click", async () => {
-    const prompt = ($("mcu-input") || {}).value || "";
+
+  // Replace panel with upgraded minimal MCU UI
+  const panel = $("panel-microcontroller");
+  panel.innerHTML = `
+    <h3>Microcontroller Builder</h3>
+
+    <textarea id="mcu-input" placeholder="Describe the ESP32 firmware you want..."></textarea>
+
+    <div style="margin-top:8px;">
+      <input id="mcu-project" placeholder="Project name (default: mcu-sandbox)" />
+    </div>
+
+    <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">
+      <select id="mcu-board" class="btn small">
+        <option value="">Board: auto</option>
+      </select>
+
+      <select id="mcu-template" class="btn small">
+        <option value="">Template: none</option>
+      </select>
+
+      <select id="mcu-example" class="btn small">
+        <option value="">Example: ESP32 pack</option>
+        <option value="esp32-wifi-scan">WiFi Scan</option>
+        <option value="esp32-wifi-connect">WiFi Connect</option>
+        <option value="esp32-ble-uart">BLE UART</option>
+      </select>
+    </div>
+
+    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+      <button id="mcu-run" class="btn">Generate Firmware</button>
+      <button id="mcu-flash" class="btn">Flash (stub)</button>
+      <button id="mcu-open-lab" class="btn">Open MCU Lab</button>
+    </div>
+
+    <pre id="mcu-output"></pre>
+  `;
+
+  loadMCUBoards();
+  loadMCUTemplates();
+
+  $("mcu-run").addEventListener("click", async () => {
+    const prompt = $("mcu-input").value.trim();
     const out = $("mcu-output");
-    if (!prompt.trim()) {
-      if (out) out.textContent = "Microcontroller prompt is empty.";
+
+    if (!prompt) {
+      out.textContent = "Microcontroller prompt is empty.";
       return;
     }
 
-    if (out) out.textContent = "Generating firmware (AI)...\n";
+    const project = $("mcu-project").value.trim() || "mcu-sandbox";
+    const board = $("mcu-board").value || null;
+    const template = $("mcu-template").value || null;
+    const example = $("mcu-example").value || null;
 
-    const res = await apiPost("/api/microcontroller/generate", {
-      project_name: currentProjectName || "mcu-sandbox",
+    out.textContent = "Generating firmware...";
+
+    const res = await apiPost("/mcu/generate", {
+      project_name: project,
       prompt,
+      board_id: board,
+      template_id: template || example || null,
+      merge_strategy: "overwrite",
     });
 
-    if (out) out.textContent = JSON.stringify(res, null, 2);
-    // refresh file tree if sandbox used
-    if (currentProjectName === (res.project || "mcu-sandbox")) {
-      await refreshFileTree(currentProjectName);
-    }
+    out.textContent = JSON.stringify(res, null, 2);
+
+    if (currentProjectName === project) await refreshFileTree(project);
+  });
+
+  $("mcu-flash").addEventListener("click", async () => {
+    const project = $("mcu-project").value.trim() || "mcu-sandbox";
+    const out = $("mcu-output");
+
+    out.textContent = "Flashing (stub)...";
+
+    const res = await apiPost("/mcu/flash", { project_name: project });
+    out.textContent = JSON.stringify(res, null, 2);
+  });
+
+  $("mcu-open-lab").addEventListener("click", () => {
+    window.open("/static/microcontroller-lab.html", "_blank");
   });
 }
 
-// =====================================================
-// PROJECT MANAGER
-// =====================================================
+async function loadMCUBoards() {
+  const res = await apiGet("/mcu/boards");
+  const sel = $("mcu-board");
+  res.boards.forEach((b) => {
+    const opt = document.createElement("option");
+    opt.value = b.id;
+    opt.textContent = b.name;
+    sel.appendChild(opt);
+  });
+}
+
+async function loadMCUTemplates() {
+  const res = await apiGet("/mcu/templates");
+  const sel = $("mcu-template");
+  res.templates.forEach((t) => {
+    const opt = document.createElement("option");
+    opt.value = t.id;
+    opt.textContent = t.name;
+    sel.appendChild(opt);
+  });
+}
+
+/* ---------------- Project Manager ---------------- */
 function bindProjectManagerUI() {
   const panel = $("panel-projects");
   if (!panel) return;
+
   panel.innerHTML = `
     <h3>Projects</h3>
     <div class="pm-controls">
@@ -251,28 +314,31 @@ function bindProjectManagerUI() {
     </div>
     <div id="pm-list" class="pm-list"></div>
   `;
+
   $("pm-create").addEventListener("click", async () => {
-    const name = ($("pm-new-name") || {}).value || "";
-    if (!name.trim()) return alert("Enter a project name");
+    const name = $("pm-new-name").value.trim();
+    if (!name) return alert("Enter a project name");
+
     const res = await apiPost("/api/projects/create", { name });
     if (res.success) {
       $("pm-new-name").value = "";
       await refreshProjects();
-    } else {
-      alert(res.error || "Create failed");
-    }
+    } else alert(res.error || "Create failed");
   });
 }
 
 async function refreshProjects() {
   const listEl = $("pm-list");
   if (!listEl) return;
+
   listEl.textContent = "Loading...";
   const res = await apiGet("/api/projects");
+
   if (!res.success) {
     listEl.textContent = "Failed to load projects";
     return;
   }
+
   listEl.innerHTML = "";
   res.projects.forEach((p) => {
     const row = document.createElement("div");
@@ -283,59 +349,58 @@ async function refreshProjects() {
       <button class="btn pm-dup">Duplicate</button>
       <button class="btn pm-del">Delete</button>
     `;
+
     row.querySelector(".pm-open").addEventListener("click", async () => {
       currentProjectName = p;
       await refreshFileTree(p);
       loadPreview(p);
       showMainMessage(`Opened ${p}`);
     });
+
     row.querySelector(".pm-dup").addEventListener("click", async () => {
-      const resDup = await apiPost("/api/projects/duplicate", { name: p });
-      if (resDup.success) await refreshProjects();
-      else alert(resDup.error || "Duplicate failed");
+      const r = await apiPost("/api/projects/duplicate", { name: p });
+      if (r.success) refreshProjects();
+      else alert(r.error || "Duplicate failed");
     });
+
     row.querySelector(".pm-del").addEventListener("click", async () => {
       if (!confirm(`Delete project ${p}?`)) return;
-      const resDel = await apiPost("/api/projects/delete", { name: p });
-      if (resDel.success) {
+      const r = await apiPost("/api/projects/delete", { name: p });
+      if (r.success) {
         if (currentProjectName === p) {
           currentProjectName = null;
           renderFileTreePlaceholder();
           renderEditorPlaceholder();
         }
-        await refreshProjects();
-      } else {
-        alert(resDel.error || "Delete failed");
-      }
+        refreshProjects();
+      } else alert(r.error || "Delete failed");
     });
+
     listEl.appendChild(row);
   });
 }
 
-// =====================================================
-// FILE TREE + EDITOR
-// =====================================================
+/* ---------------- File Tree + Editor ---------------- */
 function renderFileTreePlaceholder() {
-  const panel = $("panel-filetree");
-  if (!panel) return;
-  panel.innerHTML = `<h3>File Tree</h3><p>No project selected</p>`;
+  $("panel-filetree").innerHTML = `<h3>File Tree</h3><p>No project selected</p>`;
 }
 
 function renderEditorPlaceholder() {
-  const main = $("panel-main-view");
-  if (!main) return;
-  main.innerHTML = `<h3>Editor</h3><p>Select a file to edit</p>`;
+  $("panel-main-view").innerHTML = `<h3>Editor</h3><p>Select a file to edit</p>`;
 }
 
 async function refreshFileTree(projectName = currentProjectName) {
   const panel = $("panel-filetree");
   if (!panel) return;
+
   if (!projectName) {
     renderFileTreePlaceholder();
     return;
   }
+
   panel.innerHTML = `<h3>File Tree</h3><p>Loading...</p>`;
   const res = await apiGet(`/api/files/tree/${encodeURIComponent(projectName)}`);
+
   if (!res.success) {
     panel.innerHTML = `<h3>File Tree</h3><p>Failed to load</p>`;
     return;
@@ -349,17 +414,22 @@ async function refreshFileTree(projectName = currentProjectName) {
     nodes.forEach((n) => {
       const li = document.createElement("li");
       li.className = `node node-${n.type}`;
+
       const label = document.createElement("span");
       label.textContent = n.name;
       label.dataset.path = n.path;
       label.className = "node-label";
+
       if (n.type === "file") {
         label.addEventListener("click", () => openFile(n.path));
       }
+
       li.appendChild(label);
+
       if (n.type === "dir" && Array.isArray(n.children)) {
         li.appendChild(renderNodes(n.children));
       }
+
       ul.appendChild(li);
     });
     return ul;
@@ -367,76 +437,21 @@ async function refreshFileTree(projectName = currentProjectName) {
 
   container.appendChild(renderNodes(res.tree));
 
-  // file ops UI
-  const ops = document.createElement("div");
-  ops.className = "file-ops";
-  ops.innerHTML = `
-    <div class="ops-row">
-      <input id="op-new-path" placeholder="path/to/newfile.txt" />
-      <button id="op-create" class="btn">Create</button>
-    </div>
-    <div class="ops-row">
-      <input id="op-delete-path" placeholder="path/to/delete" />
-      <button id="op-delete" class="btn">Delete</button>
-    </div>
-    <div class="ops-row">
-      <input id="op-move-src" placeholder="src/path" />
-      <input id="op-move-dst" placeholder="dst/path" />
-      <button id="op-move" class="btn">Move</button>
-    </div>
-  `;
-  container.appendChild(ops);
-
   panel.innerHTML = `<h3>File Tree</h3>`;
   panel.appendChild(container);
-
-  // ops handlers
-  $("op-create").addEventListener("click", async () => {
-    const path = ($("op-new-path") || {}).value || "";
-    if (!path.trim()) return alert("Enter path");
-    const res = await apiPost("/api/files/write", { project_name: projectName, path, content: "" });
-    if (res.success) {
-      await refreshFileTree(projectName);
-    } else {
-      alert(res.error || "Create failed");
-    }
-  });
-
-  $("op-delete").addEventListener("click", async () => {
-    const path = ($("op-delete-path") || {}).value || "";
-    if (!path.trim()) return alert("Enter path");
-    const res = await apiPost("/api/files/delete", { project_name: projectName, path });
-    if (res.success) {
-      if (currentFilePath === path) {
-        currentFilePath = null;
-        renderEditorPlaceholder();
-      }
-      await refreshFileTree(projectName);
-    } else {
-      alert(res.error || "Delete failed");
-    }
-  });
-
-  $("op-move").addEventListener("click", async () => {
-    const src = ($("op-move-src") || {}).value || "";
-    const dst = ($("op-move-dst") || {}).value || "";
-    if (!src.trim() || !dst.trim()) return alert("Enter src and dst");
-    const res = await apiPost("/api/files/move", { project_name: projectName, src, dst });
-    if (res.success) {
-      if (currentFilePath === src) currentFilePath = dst;
-      await refreshFileTree(projectName);
-    } else {
-      alert(res.error || "Move failed");
-    }
-  });
 }
 
 async function openFile(path) {
   if (!currentProjectName) return alert("No project selected");
+
   const main = $("panel-main-view");
-  if (!main) return;
   main.innerHTML = `<h3>Editor</h3><p>Loading ${path}...</p>`;
-  const res = await apiPost("/api/files/read", { project_name: currentProjectName, path });
+
+  const res = await apiPost("/api/files/read", {
+    project_name: currentProjectName,
+    path,
+  });
+
   if (!res.success) {
     main.innerHTML = `<h3>Editor</h3><p>Failed to load file</p>`;
     return;
@@ -471,101 +486,78 @@ async function openFile(path) {
   main.appendChild(wrapper);
 
   $("editor-save").addEventListener("click", async () => {
-    const content = textarea.value;
-    const r = await apiPost("/api/files/write", { project_name: currentProjectName, path: currentFilePath, content });
+    const r = await apiPost("/api/files/write", {
+      project_name: currentProjectName,
+      path: currentFilePath,
+      content: textarea.value,
+    });
     if (r.success) {
       showMainMessage("Saved.");
-      await refreshFileTree(currentProjectName);
-    } else {
-      alert(r.error || "Save failed");
-    }
+      refreshFileTree(currentProjectName);
+    } else alert(r.error || "Save failed");
   });
 
-  $("editor-revert").addEventListener("click", async () => {
-    await openFile(currentFilePath);
-  });
+  $("editor-revert").addEventListener("click", () => openFile(currentFilePath));
 
   $("editor-download").addEventListener("click", () => {
     const blob = new Blob([textarea.value], { type: "text/plain" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = currentFilePath.split("/").pop() || "file.txt";
-    document.body.appendChild(a);
+    a.download = currentFilePath.split("/").pop();
     a.click();
-    a.remove();
   });
 }
 
-// =====================================================
-// PREVIEW
-// =====================================================
+/* ---------------- Preview ---------------- */
 function loadPreview(projectName) {
   const panel = $("panel-preview");
   if (!panel) return;
+
   panel.innerHTML = `<h3>Preview</h3>`;
   const iframe = document.createElement("iframe");
   iframe.className = "preview-frame";
   iframe.src = `/preview/${encodeURIComponent(projectName)}`;
   iframe.style.width = "100%";
   iframe.style.height = "600px";
+
   iframe.addEventListener("error", () => {
     $("errors-output").textContent = "Preview failed to load.";
   });
+
   panel.appendChild(iframe);
 }
 
-// =====================================================
-// CAPABILITIES PANEL
-// =====================================================
+/* ---------------- Capabilities ---------------- */
 function refreshCapabilities() {
   const panel = $("panel-capabilities");
   if (!panel) return;
+
   panel.innerHTML = `
     <h3>Capabilities</h3>
     <details open>
       <summary>Core Engines</summary>
       <ul>
-        <li>App Generator Engine (generator/orchestrator)</li>
-        <li>AI Assistant Engine (assistant.AIAgent)</li>
-        <li>File Engine (files API: read/write/tree/move/delete)</li>
-        <li>Project Manager (create/duplicate/delete/rename)</li>
-        <li>Terminal Engine (terminal API or assistant fallback)</li>
-        <li>Microcontroller Engine (generate/flash)</li>
-        <li>Cloudflare Deploy (optional engine)</li>
-      </ul>
-    </details>
-    <details>
-      <summary>Planned Features</summary>
-      <ul>
-        <li>Syntax highlighting editor (Monaco/CodeMirror)</li>
-        <li>Live logs streaming</li>
-        <li>ESP toolchain integration (esptool, platformio)</li>
-        <li>Cloudflare Workers/Pages deploy UI</li>
-        <li>R2 / D1 / KV management</li>
+        <li>App Generator Engine</li>
+        <li>AI Assistant Engine</li>
+        <li>File Engine</li>
+        <li>Project Manager</li>
+        <li>Terminal Engine</li>
+        <li>Microcontroller Engine (boards, templates, examples, generate, flash)</li>
+        <li>MCU Breadboard Lab (separate page)</li>
       </ul>
     </details>
   `;
 }
 
-// =====================================================
-// UTIL / UI HELPERS
-// =====================================================
+/* ---------------- UI Helpers ---------------- */
 function showMainMessage(msg) {
   const main = $("panel-main-view");
   if (!main) return;
+
   const el = document.createElement("div");
   el.className = "main-message";
   el.textContent = msg;
+
   main.prepend(el);
   setTimeout(() => el.remove(), 3000);
 }
-
-// =====================================================
-// EXPORTS for debugging (optional)
-// =====================================================
-window.Playground = {
-  refreshProjects,
-  refreshFileTree,
-  openFile,
-  loadPreview,
-};
