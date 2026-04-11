@@ -1,4 +1,4 @@
-// static/app.js — FINAL REWRITE WITH AI DRAWER + FLOAT BUTTON
+// static/app.js — FULL CLEAN REWRITE (AI drawer + float button + project-optional AI)
 
 let currentProjectName = null;
 let currentFilePath = null;
@@ -57,7 +57,7 @@ function loadHome() {
 }
 
 /* ---------------------------------------------------------
-   DOCK TABS (Terminal / Logs / Errors)
+   DOCK TABS
 --------------------------------------------------------- */
 function bindDockTabs() {
   const tabs = document.querySelectorAll(".pg-dock-tab");
@@ -107,24 +107,26 @@ function bindTerminal() {
 }
 
 /* ---------------------------------------------------------
-   AI ASSISTANT (Drawer)
+   AI ASSISTANT (Drawer) — PROJECT OPTIONAL
 --------------------------------------------------------- */
 function bindAI() {
   $("ai-send").addEventListener("click", async () => {
     const input = $("ai-input").value.trim();
     const out = $("ai-output");
 
-    if (!input) return out.textContent = "Prompt empty.";
-    if (!currentProjectName) return out.textContent = "No project selected.";
+    if (!input) {
+      out.textContent = "Prompt empty.";
+      return;
+    }
 
-    out.textContent = "Running...\n";
+    out.textContent = "Thinking...\n";
 
     const res = await apiPost("/api/assistant/run", {
       prompt: input,
-      project_name: currentProjectName,
+      project_name: currentProjectName || null
     });
 
-    out.textContent = JSON.stringify(res, null, 2);
+    out.textContent = res.message || "No response.";
 
     if (currentFilePath) openFile(currentFilePath);
   });
