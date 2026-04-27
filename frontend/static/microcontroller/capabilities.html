@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>MCU Lab Capabilities</title>
+  <link rel="stylesheet" href="/static/microcontroller-lab.css" />
+  <style>
+    body {
+      background: var(--bg);
+      color: var(--fg);
+      font-family: var(--font);
+      padding: 40px;
+      max-width: 900px;
+      margin: auto;
+    }
+    h1, h2, h3 {
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+    .cap-section {
+      margin-bottom: 40px;
+      padding: 20px;
+      border-radius: 12px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+    }
+    .cap-list li {
+      margin: 6px 0;
+      line-height: 1.5;
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 6px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 12px;
+      margin-left: 6px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>MCU Lab — Capabilities</h1>
+  <p class="muted">A complete overview of what the Boardwalk MCU Lab Pro can do.</p>
+
+  <!-- ----------------------------------------------------- -->
+  <!-- SECTION: Boards -->
+  <!-- ----------------------------------------------------- -->
+  <div class="cap-section">
+    <h2>Supported Boards</h2>
+    <ul class="cap-list">
+      <li>ESP32 DevKit V1 <span class="badge">Default</span></li>
+      <li>ESP32‑S3</li>
+      <li>ESP8266 NodeMCU</li>
+      <li>ESP32‑C3 (via backend registry)</li>
+      <li>ESP32 WROOM / WROVER modules</li>
+    </ul>
+    <p>Boards are loaded dynamically from <code>backend/microcontroller/boards.py</code>.</p>
+  </div>
+
+  <!-- ----------------------------------------------------- -->
+  <!-- SECTION: Wiring Engine -->
+  <!-- ----------------------------------------------------- -->
+  <div class="cap-section">
+    <h2>Wiring Engine</h2>
+    <ul class="cap-list">
+      <li>Drag‑and‑drop components</li>
+      <li>Auto‑ID assignment for components</li>
+      <li>Wire mode with color cycling</li>
+      <li>SVG‑based wire rendering</li>
+      <li>Zoomable breadboard workspace</li>
+      <li>Auto‑generated netlist JSON</li>
+    </ul>
+  </div>
+
+  <!-- ----------------------------------------------------- -->
+  <!-- SECTION: Components -->
+  <!-- ----------------------------------------------------- -->
+  <div class="cap-section">
+    <h2>Component Library</h2>
+    <p>Over 40 components available:</p>
+    <ul class="cap-list">
+      <li>LEDs, resistors, buttons, potentiometers</li>
+      <li>Environmental sensors (DHT11, DHT22, BME280, MQ‑series)</li>
+      <li>Motion & distance sensors (PIR, HC‑SR04, VL53L0X)</li>
+      <li>Displays (OLED SSD1306, LCD1602, TFT 1.8")</li>
+      <li>Communication modules (NRF24L01, LoRa SX1278, HC‑05, ESP‑01)</li>
+      <li>Power modules (buck, boost, solar, battery holders)</li>
+    </ul>
+  </div>
+
+  <!-- ----------------------------------------------------- -->
+  <!-- SECTION: AI Panel Pro -->
+  <!-- ----------------------------------------------------- -->
+  <div class="cap-section">
+    <h2>AI Panel Pro</h2>
+    <ul class="cap-list">
+      <li>Wiring mode — JSON wiring plans, pin maps, diagrams</li>
+      <li>Code mode — deterministic firmware generation</li>
+      <li>Image mode — blueprint, photorealistic, anime, technical</li>
+      <li>Session memory for multi‑step reasoning</li>
+      <li>Project‑optional AI (works with or without a project)</li>
+    </ul>
+  </div>
+
+  <!-- ----------------------------------------------------- -->
+  <!-- SECTION: Simulation -->
+  <!-- ----------------------------------------------------- -->
+  <div class="cap-section">
+    <h2>Simulation Engine</h2>
+    <ul class="cap-list">
+      <li>Rule‑based electrical validation</li>
+      <li>LED polarity + resistor checks</li>
+      <li>Over‑voltage detection</li>
+      <li>Over‑current detection</li>
+      <li>Short‑circuit detection</li>
+      <li>Sensor voltage compatibility checks</li>
+    </ul>
+    <p>Powered by <code>backend/microcontroller/breadboard_sim.py</code>.</p>
+  </div>
+
+  <!-- ----------------------------------------------------- -->
+  <!-- SECTION: Firmware -->
+  <!-- ----------------------------------------------------- -->
+  <div class="cap-section">
+    <h2>Firmware Generation</h2>
+    <ul class="cap-list">
+      <li>Natural‑language firmware generation</li>
+      <li>ESP32 / ESP8266 C++ (Arduino‑CLI)</li>
+      <li>Auto‑scaffolded project structure</li>
+      <li>Board‑aware code generation</li>
+      <li>Merge strategies (overwrite / append)</li>
+    </ul>
+  </div>
+
+  <!-- ----------------------------------------------------- -->
+  <!-- SECTION: Flashing -->
+  <!-- ----------------------------------------------------- -->
+  <div class="cap-section">
+    <h2>Flashing Engine</h2>
+    <ul class="cap-list">
+      <li>Arduino‑CLI compile + upload</li>
+      <li>Auto‑detect serial ports</li>
+      <li>Board‑specific FQBN selection</li>
+      <li>Optional erase mode</li>
+      <li>Structured logs for compile + upload</li>
+    </ul>
+  </div>
+
+  <!-- ----------------------------------------------------- -->
+  <!-- SECTION: Import / Export -->
+  <!-- ----------------------------------------------------- -->
+  <div class="cap-section">
+    <h2>Import / Export</h2>
+    <ul class="cap-list">
+      <li>Import firmware project → auto wiring</li>
+      <li>Export netlist JSON</li>
+      <li>Load saved netlists</li>
+    </ul>
+  </div>
+
+  <!-- ----------------------------------------------------- -->
+  <!-- SECTION: File Integration -->
+  <!-- ----------------------------------------------------- -->
+  <div class="cap-section">
+    <h2>Playground Integration</h2>
+    <ul class="cap-list">
+      <li>Works inside the main Playground Studio</li>
+      <li>Uses the same backend (FastAPI)</li>
+      <li>Shares project manager + file tree</li>
+      <li>Shares AI assistant + terminal</li>
+    </ul>
+  </div>
+
+</body>
+</html>
