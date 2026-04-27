@@ -1,4 +1,3 @@
-# backend/utils/file_ops.py
 """
 Hardened File Operations (Platform‑Wide Standard)
 -------------------------------------------------
@@ -7,20 +6,26 @@ This module provides the *lowest‑level* safe file operations used across the
 entire platform:
 
 - Path traversal protection
+- Symlink protection
 - Atomic writes (temp file → replace)
 - Optional timestamped backups
 - Deterministic directory creation
 - UTF‑8 safe reads/writes
+- Safe delete (files + directories)
+- Safe copy / move
+- Safe mkdir
+- Safe list
 - Structured return payloads
 - Never throws exceptions
 """
 
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 import time
 import shutil
 import tempfile
 import json
+import os
 
 
 # ============================================================
@@ -38,6 +43,30 @@ def _ensure_parent(path: Path):
         pass
 
 
+def _resolve(path: str, root: Optional[str] = None) -> Path:
+    """
+    Resolve path and enforce optional project root.
+    Prevents:
+    - ../ traversal
+    - symlink escape
+    """
+    p = Path(path).resolve()
+
+    if root:
+        root_p = Path(root).resolve()
+        if not str(p).startswith(str(root_p)):
+            raise PermissionError("Path outside project root is not allowed")
+
+    # Prevent symlink escape
+    try:
+        if p.is_symlink():
+            raise PermissionError("Symlink access is not allowed")
+    except Exception:
+        pass
+
+    return p
+
+
 def _atomic_write(path: Path, content: str) -> None:
     """
     Atomic write using a temp file in the same directory.
@@ -48,18 +77,19 @@ def _atomic_write(path: Path, content: str) -> None:
     tmp_path = Path(tmp)
 
     try:
-        with open(fd, "wb") as f:
+        with os.fdopen(fd, "wb") as f:
             f.write(content.encode("utf-8"))
 
         # Atomic replace
         tmp_path.replace(path)
 
     finally:
-        try:
-            if tmp_path.exists():
+        # If replace succeeded, tmp no longer exists
+        if tmp_path.exists():
+            try:
                 tmp_path.unlink()
-        except Exception:
-            pass
+            except Exception:
+                pass
 
 
 def _create_backup(path: Path) -> Optional[str]:
@@ -74,20 +104,6 @@ def _create_backup(path: Path) -> Optional[str]:
         return str(bak)
     except Exception:
         return None
-
-
-def _resolve(path: str, root: Optional[str] = None) -> Path:
-    """
-    Resolve path and enforce optional project root.
-    """
-    p = Path(path).resolve()
-
-    if root:
-        root_p = Path(root).resolve()
-        if not str(p).startswith(str(root_p)):
-            raise PermissionError("Path outside project root is not allowed")
-
-    return p
 
 
 # ============================================================
@@ -173,3 +189,78 @@ def safe_delete(path: str, root: Optional[str] = None) -> Dict[str, Any]:
 
     except Exception as e:
         return {"success": False, "error": str(e), "code": "UNKNOWN"}
+
+
+def safe_copy(src: str, dst: str, root: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Safe file copy.
+    """
+    try:
+        src_p = _resolve(src, root)
+        dst_p = _resolve(dst, root)
+
+        _ensure_parent(dst_p)
+
+        shutil.copy2(src_p, dst_p)
+
+        return {"success": True, "src": str(src_p), "dst": str(dst_p)}
+
+    except Exception as e:
+        return {"success": False, "error": str(e), "code": "COPY_ERROR"}
+
+
+def safe_move(src: str, dst: str, root: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Safe file move.
+    """
+    try:
+        src_p = _resolve(src, root)
+        dst_p = _resolve(dst, root)
+
+        _ensure_parent(dst_p)
+
+        shutil.move(src_p, dst_p)
+
+        return {"success": True, "src": str(src_p), "dst": str(dst_p)}
+
+    except Exception as e:
+        return {"success": False, "error": str(e), "code": "MOVE_ERROR"}
+
+
+def safe_mkdir(path: str, root: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Safe directory creation.
+    """
+    try:
+        p = _resolve(path, root)
+        p.mkdir(parents=True, exist_ok=True)
+        return {"success": True, "path": str(p)}
+    except Exception as e:
+        return {"success": False, "error": str(e), "code": "MKDIR_ERROR"}
+
+
+def safe_list(path: str, root: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Safe directory listing.
+    """
+    try:
+        p = _resolve(path, root)
+
+        if not p.exists():
+            return {"success": False, "error": "Path not found", "code": "NOT_FOUND"}
+
+        if not p.is_dir():
+            return {"success": False, "error": "Not a directory", "code": "NOT_DIR"}
+
+        items = []
+        for child in p.iterdir():
+            items.append({
+                "name": child.name,
+                "path": str(child),
+                "type": "dir" if child.is_dir() else "file"
+            })
+
+        return {"success": True, "items": items}
+
+    except Exception as e:
+        return {"success": False, "error": str(e), "code": "LIST_ERROR"}
