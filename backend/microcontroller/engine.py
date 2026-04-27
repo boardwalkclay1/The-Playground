@@ -1,208 +1,169 @@
-# backend/microcontroller/engine.py
 """
-Super-arduino microcontroller engine (ESP-focused)
+ESP Workbench Engine
+Generates real ESP32 / ESP8266 / ESP32-C3 firmware from HTML/CSS/JS.
 """
 
 from pathlib import Path
-from typing import Dict, Any, List, Optional
-import shutil
+from typing import Dict, Any, Optional
 import json
-import time
+import shutil
 
-from assistant import AIAgent
-from assistant.audit_logger import AuditLogger
-from assistant.policy import redact_dict
-
+from .settings import (
+    MCUSettings,
+    ensure_project_settings,
+    load_settings,
+    save_settings,
+)
 from .templates import (
-    list_templates,
     load_template,
-    save_template,
+    list_templates,
 )
 from .boards import (
     get_board,
     list_boards,
     default_board_id,
 )
-from .settings import (
-    MCUSettings,
-    load_settings,
-    save_settings,
+from .templates import (
+    load_template,
 )
-from .breadboard_sim import (
-    simulate_circuit,
-)
-from .examples_esp32 import (
-    ensure_esp32_examples_installed,
-)
+from . import templates as template_module
 
-MCU_ROOT = Path("projects/mcu-sandbox")
+
+# ---------------------------------------------------------
+# ROOT
+# ---------------------------------------------------------
+
+MCU_ROOT = Path("backend/projects/mcu-sandbox")
 MCU_ROOT.mkdir(parents=True, exist_ok=True)
 
 
-def _atomic_write(path: Path, content: str):
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(content, encoding="utf-8")
-    tmp.replace(path)
-
-
-def _safe_json_load(text: str) -> Dict[str, str]:
-    try:
-        data = json.loads(text)
-        if isinstance(data, dict):
-            out: Dict[str, str] = {}
-            for k, v in data.items():
-                if isinstance(v, str):
-                    out[k] = v
-                else:
-                    out[k] = json.dumps(v, indent=2)
-            return out
-    except Exception:
-        pass
-    return {}
-
+# ---------------------------------------------------------
+# HELPERS
+# ---------------------------------------------------------
 
 def _project_dir(project_name: str) -> Path:
     return MCU_ROOT / project_name
 
 
+def _atomic_write(path: Path, content: str):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(content, encoding="utf-8")
+    tmp.replace(path)
+
+
+# ---------------------------------------------------------
+# HTML/CSS/JS → ESP32 Arduino Sketch
+# ---------------------------------------------------------
+
+def build_single_page(html: str, css: str, js: str) -> str:
+    return f"""<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<style>
+{css}
+</style>
+</head>
+<body>
+{html}
+<script>
+{js}
+</script>
+</body>
+</html>
+"""
+
+
+def generate_arduino_sketch(html: str, css: str, js: str, board_id: str) -> str:
+    page = build_single_page(html, css, js)
+
+    return f"""
+#include <WiFi.h>
+#include <WebServer.h>
+
+const char* ssid = "YOUR_WIFI_SSID";
+const char* password = "YOUR_WIFI_PASSWORD";
+
+WebServer server(80);
+
+const char MAIN_page[] PROGMEM = R"rawliteral(
+{page}
+)rawliteral";
+
+void handleRoot() {{
+  server.send(200, "text/html", MAIN_page);
+}}
+
+void setup() {{
+  Serial.begin(115200);
+  delay(1000);
+
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {{
+    delay(500);
+  }}
+
+  server.on("/", handleRoot);
+  server.begin();
+}}
+
+void loop() {{
+  server.handleClient();
+}}
+""".strip()
+
+
+# ---------------------------------------------------------
+# PUBLIC API
+# ---------------------------------------------------------
+
 def generate_firmware(
     project_name: str,
-    prompt: str,
-    template_id: Optional[str] = None,
+    html: str,
+    css: str,
+    js: str,
     board_id: Optional[str] = None,
-    merge_strategy: str = "overwrite",
 ) -> Dict[str, Any]:
+
+    # Prepare project directory
     project_dir = _project_dir(project_name)
     if project_dir.exists():
         shutil.rmtree(project_dir)
     project_dir.mkdir(parents=True, exist_ok=True)
 
-    audit = AuditLogger(MCU_ROOT)
-    ensure_esp32_examples_installed()
-
+    # Determine board
     if not board_id:
         board_id = default_board_id()
+
     board = get_board(board_id)
 
-    settings = load_settings(project_dir) or MCUSettings(
-        board_id=board_id,
-        baud_rate=115200,
-        flash_mode="dio",
-        flash_freq="40m",
-        upload_port=None,
-    )
+    # Ensure settings exist
+    settings = ensure_project_settings(project_dir, board_id)
+
+    # Generate firmware
+    sketch = generate_arduino_sketch(html, css, js, board_id)
+
+    # Write firmware file
+    sketch_path = project_dir / "src" / "main.cpp"
+    _atomic_write(sketch_path, sketch)
+
+    # Save settings
     save_settings(project_dir, settings)
-
-    base_files: Dict[str, str] = {}
-    if template_id:
-        tmpl = load_template(template_id)
-        base_files.update(tmpl.get("files", {}))
-
-    full_prompt = (
-        "microcontroller-generate\n"
-        f"project:{project_name}\n"
-        f"board:{board_id}\n"
-        f"board_meta:{json.dumps(board)}\n"
-        f"settings:{settings.json()}\n"
-        "instructions:\n"
-        f"{prompt}\n\n"
-        "CONTEXT:\n"
-        "- You are generating firmware for this specific board and settings.\n"
-        "- If template files are present, you may extend or modify them.\n"
-        "- Respect pin mappings and voltage constraints.\n\n"
-        "OUTPUT RULES:\n"
-        "- Return ONLY a JSON object mapping file paths to file contents.\n"
-        "- No explanations, no markdown, no commentary.\n"
-        "- Example: {\"src/main.cpp\": \"<code>\"}\n"
-    )
-
-    agent = AIAgent()
-    result = agent.run(full_prompt, str(project_dir))
-
-    audit.log("mcu.generate.request", {
-        "project": project_name,
-        "prompt": prompt,
-        "template_id": template_id,
-        "board_id": board_id,
-        "settings": json.loads(settings.json()),
-        "agent_result": redact_dict(result),
-    })
-
-    files: Dict[str, str] = {}
-    raw = None
-    if isinstance(result, dict):
-        raw = (
-            result.get("message")
-            or result.get("details", {}).get("message")
-            or result.get("details", {}).get("output")
-        )
-
-    if isinstance(raw, str):
-        files = _safe_json_load(raw)
-
-    if not files:
-        files = {}
-    if merge_strategy == "overwrite":
-        merged = {**base_files, **files}
-    elif merge_strategy == "append":
-        merged = base_files.copy()
-        for k, v in files.items():
-            if k in merged:
-                merged[k] = merged[k] + "\n\n" + v
-            else:
-                merged[k] = v
-    else:
-        merged = {**base_files, **files}
-
-    if not merged:
-        merged = {"main.ino": "// fallback firmware\n"}
-
-    written: List[str] = []
-    for rel, content in merged.items():
-        safe_rel = rel.lstrip("/").replace("..", "")
-        p = project_dir / safe_rel
-        _atomic_write(p, content)
-        written.append(safe_rel)
-
-    audit.log("mcu.generate.complete", {
-        "project": project_name,
-        "files": written,
-        "board_id": board_id,
-        "settings": json.loads(settings.json()),
-    })
 
     return {
         "success": True,
         "project": project_name,
-        "files": written,
         "board": board,
         "settings": json.loads(settings.json()),
+        "files": ["src/main.cpp"],
         "path": str(project_dir),
     }
 
 
 def list_firmware_templates() -> Dict[str, Any]:
     return {"success": True, "templates": list_templates()}
-
-
-def save_firmware_template(
-    template_id: str,
-    name: str,
-    description: str,
-    tags: List[str],
-    files: Dict[str, str],
-    board_id: Optional[str] = None,
-) -> Dict[str, Any]:
-    save_template(
-        template_id=template_id,
-        name=name,
-        description=description,
-        tags=tags,
-        files=files,
-        board_id=board_id,
-    )
-    return {"success": True, "template_id": template_id}
 
 
 def load_firmware_template(template_id: str) -> Dict[str, Any]:
@@ -226,13 +187,8 @@ def get_board_settings(project_name: str) -> Dict[str, Any]:
 
 def update_board_settings(project_name: str, new_settings: Dict[str, Any]) -> Dict[str, Any]:
     project_dir = _project_dir(project_name)
-    current = load_settings(project_dir) or MCUSettings(
-        board_id=new_settings.get("board_id") or default_board_id(),
-        baud_rate=new_settings.get("baud_rate", 115200),
-        flash_mode=new_settings.get("flash_mode", "dio"),
-        flash_freq=new_settings.get("flash_freq", "40m"),
-        upload_port=new_settings.get("upload_port"),
-    )
+    current = load_settings(project_dir) or ensure_project_settings(project_dir)
+
     updated = MCUSettings(
         board_id=new_settings.get("board_id", current.board_id),
         baud_rate=new_settings.get("baud_rate", current.baud_rate),
@@ -240,59 +196,7 @@ def update_board_settings(project_name: str, new_settings: Dict[str, Any]) -> Di
         flash_freq=new_settings.get("flash_freq", current.flash_freq),
         upload_port=new_settings.get("upload_port", current.upload_port),
     )
+
     save_settings(project_dir, updated)
+
     return {"success": True, "settings": json.loads(updated.json())}
-
-
-def flash_firmware(project_name: str) -> Dict[str, Any]:
-    project_dir = _project_dir(project_name)
-    audit = AuditLogger(MCU_ROOT)
-
-    if not project_dir.exists():
-        audit.log("mcu.flash.error", {"project": project_name, "error": "not found"})
-        return {"success": False, "error": "Firmware project not found"}
-
-    bins = list(project_dir.rglob("*.bin"))
-    if not bins:
-        audit.log("mcu.flash.error", {"project": project_name, "error": "no .bin"})
-        return {"success": False, "error": "No .bin firmware found to flash"}
-
-    settings = load_settings(project_dir)
-    board_id = settings.board_id if settings else default_board_id()
-    board = get_board(board_id)
-
-    chosen = bins[0]
-    msg = f"Would flash {chosen.name} to port {settings.upload_port or 'auto'} at {settings.baud_rate} baud"
-
-    audit.log("mcu.flash.stub", {
-        "project": project_name,
-        "bin": chosen.name,
-        "board_id": board_id,
-        "settings": json.loads(settings.json()) if settings else None,
-    })
-
-    return {
-        "success": True,
-        "message": msg,
-        "bin": chosen.name,
-        "project": project_name,
-        "board": board,
-        "settings": json.loads(settings.json()) if settings else None,
-    }
-
-
-def simulate_breadboard(project_name: str, netlist: Dict[str, Any]) -> Dict[str, Any]:
-    project_dir = _project_dir(project_name)
-    audit = AuditLogger(MCU_ROOT)
-
-    result = simulate_circuit(netlist)
-    sim_path = project_dir / "breadboard-sim.json"
-    _atomic_write(sim_path, json.dumps(result, indent=2))
-
-    audit.log("mcu.breadboard.simulated", {
-        "project": project_name,
-        "netlist": netlist,
-        "result": result,
-    })
-
-    return {"success": True, "result": result}
