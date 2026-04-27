@@ -1,5 +1,5 @@
-// MCU LAB ENGINE — PRO (MATCHES CURRENT HTML)
-console.log("MCU Lab Loaded");
+// MCU LAB ENGINE — HYBRID MODE (SAME UI, NEW ENGINE)
+console.log("MCU Lab Engine (Hybrid) Loaded");
 
 /* -------------------------------------------------------
    DOM ELEMENTS
@@ -23,7 +23,7 @@ const exportNetlistBtn = document.getElementById("export-netlist");
 const simulateBtn = document.getElementById("simulate");
 
 /* -------------------------------------------------------
-   AI PANEL PRO ELEMENTS
+   AI PANEL
 ------------------------------------------------------- */
 const aiPromptEl = document.getElementById("ai-prompt");
 const aiOutputEl = document.getElementById("ai-output");
@@ -36,25 +36,24 @@ const aiImageResEl = document.getElementById("ai-image-res");
 const aiTabs = document.querySelectorAll(".ai-tab");
 
 /* -------------------------------------------------------
-   IMAGE SOURCES (LOCAL OR CDN)
+   IMAGE SOURCES
 ------------------------------------------------------- */
-const IMAGE_BASE = "/static/breadboard"; 
-// If you want CDN instead, replace with:
-// const IMAGE_BASE = "https://raw.githubusercontent.com/wokwi/wokwi-assets/main";
+const IMAGE_BASE = "/static/breadboard";
 
-/* -------------------------------------------------------
-   BOARDS
-------------------------------------------------------- */
 const BOARD_IMAGES = {
   "esp32-devkit-v1": `${IMAGE_BASE}/boards/esp32-devkit-v1.png`,
   "esp32-s3": `${IMAGE_BASE}/boards/esp32-s3.png`,
   "esp8266": `${IMAGE_BASE}/boards/esp8266.png`,
 };
 
+/* -------------------------------------------------------
+   LOAD BOARD IMAGE
+------------------------------------------------------- */
 function loadBoardImage(boardKey) {
   boardLayer.innerHTML = "";
   const img = document.createElement("img");
   img.src = BOARD_IMAGES[boardKey] || BOARD_IMAGES["esp32-devkit-v1"];
+  img.draggable = false;
   boardLayer.appendChild(img);
 }
 
@@ -62,13 +61,13 @@ loadBoardImage(boardSelect.value);
 
 boardSelect.addEventListener("change", () => {
   loadBoardImage(boardSelect.value);
+  rebuildNetlist();
 });
 
 /* -------------------------------------------------------
-   AUTO-REGISTERED COMPONENTS
+   COMPONENT REGISTRY
 ------------------------------------------------------- */
 const COMPONENT_REGISTRY = {
-  // Basic
   led: "LED",
   resistor: "Resistor",
   button: "Button",
@@ -77,8 +76,6 @@ const COMPONENT_REGISTRY = {
   relay: "Relay Module",
   servo: "Servo Motor",
   "stepper-driver": "Stepper Driver A4988",
-
-  // Environmental
   dht11: "DHT11",
   dht22: "DHT22",
   bme280: "BME280",
@@ -88,15 +85,11 @@ const COMPONENT_REGISTRY = {
   "soil-moisture": "Soil Moisture Sensor",
   "water-level": "Water Level Sensor",
   "rain-sensor": "Rain Sensor",
-
-  // Motion / Distance / Light
   pir: "PIR Motion Sensor",
   ultrasonic: "Ultrasonic HC-SR04",
   "tof-vl53l0x": "Laser ToF VL53L0X",
   "ir-obstacle": "IR Obstacle Sensor",
   ldr: "Photoresistor (LDR)",
-
-  // Specialty
   "microwave-radar": "Microwave Radar RCWL-0516",
   "laser-emitter": "Laser Emitter",
   "laser-receiver": "Laser Receiver",
@@ -104,21 +97,15 @@ const COMPONENT_REGISTRY = {
   "sound-sensor": "Sound Sensor",
   "vibration-sensor": "Vibration Sensor",
   "hall-sensor": "Hall Effect Sensor",
-
-  // Displays
   "oled-ssd1306": "OLED SSD1306",
   lcd1602: "LCD 1602",
   lcd2004: "LCD 2004",
-  tft18: "TFT 1.8\" SPI",
-
-  // Communication
+  tft18: 'TFT 1.8" SPI',
   nrf24l01: "NRF24L01",
   "lora-sx1278": "LoRa SX1278",
   hc05: "Bluetooth HC-05",
   esp01: "ESP-01 WiFi",
   "rfid-rc522": "RFID RC522",
-
-  // Power
   buck: "Buck Converter",
   boost: "Boost Converter",
   "battery-holder": "Battery Holder",
@@ -190,20 +177,11 @@ let wireMode = false;
 let wireStart = null;
 let wires = [];
 
-const WIRE_COLORS = [
-  "#ef4444", // red
-  "#000000", // black
-  "#eab308", // yellow
-  "#f97316", // orange
-  "#3b82f6", // blue
-  "#22c55e", // green
-];
+const WIRE_COLORS = ["#ef4444", "#000000", "#eab308", "#f97316", "#3b82f6", "#22c55e"];
 let wireColorIndex = 0;
 
 function nextWireColor() {
-  const color = WIRE_COLORS[wireColorIndex % WIRE_COLORS.length];
-  wireColorIndex++;
-  return color;
+  return WIRE_COLORS[wireColorIndex++ % WIRE_COLORS.length];
 }
 
 toggleWiringBtn.addEventListener("click", () => {
@@ -322,9 +300,9 @@ async function aiRequest(endpoint, payload) {
 }
 
 /* -------------------------------------------------------
-   AI PANEL PRO LOGIC
+   AI PANEL
 ------------------------------------------------------- */
-let aiMode = "wiring"; // wiring | code | image
+let aiMode = "wiring";
 
 aiTabs.forEach((tab) => {
   tab.addEventListener("click", () => {
@@ -349,11 +327,9 @@ aiRunBtn.addEventListener("click", async () => {
   let endpoint = "";
   let payload = { prompt, session_id: sessionId };
 
-  if (aiMode === "wiring") {
-    endpoint = "/ai/wiring";
-  } else if (aiMode === "code") {
-    endpoint = "/ai/code";
-  } else if (aiMode === "image") {
+  if (aiMode === "wiring") endpoint = "/ai/wiring";
+  else if (aiMode === "code") endpoint = "/ai/code";
+  else if (aiMode === "image") {
     endpoint = "/ai/image";
     payload.style = aiImageStyleEl.value;
     payload.resolution = aiImageResEl.value;
@@ -393,7 +369,7 @@ simulateBtn.addEventListener("click", async () => {
 });
 
 /* -------------------------------------------------------
-   IMPORT FIRMWARE PROJECT → AUTO WIRING
+   IMPORT PROJECT → AUTO WIRING
 ------------------------------------------------------- */
 importProjectBtn.addEventListener("click", async () => {
   const name = prompt("Enter project name:");
