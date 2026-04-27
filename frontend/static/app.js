@@ -3,7 +3,9 @@
 let currentProjectName = null;
 let currentFilePath = null;
 
-// Auto-detect backend
+/* ---------------------------------------------------------
+   BACKEND DETECTION
+--------------------------------------------------------- */
 function detectBackend() {
   const saved = localStorage.getItem("backend_url");
   if (saved) return saved;
@@ -97,7 +99,6 @@ function bindTerminal() {
     });
 
     out.textContent = JSON.stringify(res, null, 2);
-
     if (res.error) $("errors-output").textContent = res.error;
   });
 
@@ -107,7 +108,7 @@ function bindTerminal() {
 }
 
 /* ---------------------------------------------------------
-   AI ASSISTANT (Drawer) — PROJECT OPTIONAL
+   AI ASSISTANT (Drawer)
 --------------------------------------------------------- */
 function bindAI() {
   $("ai-send").addEventListener("click", async () => {
@@ -324,7 +325,7 @@ function loadPreview(projectName) {
 }
 
 /* ---------------------------------------------------------
-   MCU
+   MCU BUILDER
 --------------------------------------------------------- */
 function renderMCU() {
   $("main-content").innerHTML = `
@@ -340,8 +341,10 @@ function renderMCU() {
 
     const res = await apiPost("/mcu/generate", {
       project_name: "mcu-sandbox",
-      prompt,
-      merge_strategy: "overwrite",
+      html: "<h1>Hello</h1>",
+      css: "",
+      js: "",
+      board_id: "esp32-devkit-v1"
     });
 
     $("mcu-output").textContent = JSON.stringify(res, null, 2);
