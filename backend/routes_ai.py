@@ -1,23 +1,34 @@
 # backend/assistant/routes_ai.py
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import Dict, List
-import uuid
+from typing import Dict, List, Any
 
-from openai_client import chat as openai_chat, generate_image
+from openai_client import fused_chat, generate_image
 from assistant.audit_logger import AuditLogger
 
-router = APIRouter()
+router = APIRouter(prefix="/ai", tags=["assistant"])
 
-# In-memory conversation store
+# ---------------------------------------------------------
+# SESSION MEMORY
+# ---------------------------------------------------------
+
 CONVERSATIONS: Dict[str, List[Dict[str, str]]] = {}
 audit = AuditLogger()
 
 
-# ============================================================
+def get_history(session_id: str) -> List[Dict[str, str]]:
+    return CONVERSATIONS.get(session_id, [])
+
+
+def add_history(session_id: str, role: str, content: str):
+    CONVERSATIONS.setdefault(session_id, []).append({"role": role, "content": content})
+    CONVERSATIONS[session_id] = CONVERSATIONS[session_id][-40:]  # keep last 40 messages
+
+
+# ---------------------------------------------------------
 # MODELS
-# ============================================================
+# ---------------------------------------------------------
 
 class AIRequest(BaseModel):
     prompt: str
@@ -29,65 +40,36 @@ class AIImageRequest(AIRequest):
     resolution: str
 
 
-# ============================================================
-# MEMORY
-# ============================================================
+# ---------------------------------------------------------
+# LLM HELPERS
+# ---------------------------------------------------------
 
-def get_history(session_id: str):
-    return CONVERSATIONS.get(session_id, [])
+def _run_llm(system: str, session_id: str) -> str:
+    messages = [{"role": "system", "content": system}] + get_history(session_id)
+    raw = fused_chat(messages)
 
+    if not isinstance(raw, str):
+        raise HTTPException(status_code=500, detail="Invalid LLM response")
 
-def add_history(session_id: str, role: str, content: str):
-    CONVERSATIONS.setdefault(session_id, []).append({"role": role, "content": content})
-    CONVERSATIONS[session_id] = CONVERSATIONS[session_id][-30:]
-
-
-# ============================================================
-# LLM CALLS
-# ============================================================
-
-def wiring_llm(messages):
-    resp = openai_chat(
-        model="gpt-4o",
-        messages=messages,
-        temperature=0.2
-    )
-    return resp.choices[0].message.content
+    return raw
 
 
-def code_llm(messages):
-    resp = openai_chat(
-        model="gpt-4o-mini",
-        messages=messages,
-        temperature=0.2
-    )
-    return resp.choices[0].message.content
-
-
-def image_llm(prompt, style, resolution):
-    img = generate_image(
-        prompt=f"{prompt}, style={style}",
-        size=resolution
-    )
-    return img.data[0].url
-
-
-# ============================================================
+# ---------------------------------------------------------
 # ROUTES
-# ============================================================
+# ---------------------------------------------------------
 
-@router.post("/ai/wiring")
+@router.post("/wiring")
 async def ai_wiring(req: AIRequest):
     s = req.session_id
     add_history(s, "user", f"[WIRING] {req.prompt}")
 
     system = (
-        "You are Boardwalk MCU Wiring Expert. "
-        "Output JSON wiring plans, pin mappings, diagrams, and clear explanations."
+        "You are the Boardwalk MCU Wiring Expert.\n"
+        "Return ONLY JSON wiring plans, pin mappings, and clear explanations.\n"
+        "No markdown. No prose outside JSON."
     )
 
-    messages = [{"role": "system", "content": system}] + get_history(s)
-    text = wiring_llm(messages)
+    text = _run_llm(system, s)
 
     add_history(s, "assistant", text)
     audit.log("ai_wiring", {"session": s, "prompt": req.prompt, "response": text})
@@ -95,18 +77,18 @@ async def ai_wiring(req: AIRequest):
     return {"success": True, "text": text}
 
 
-@router.post("/ai/code")
+@router.post("/code")
 async def ai_code(req: AIRequest):
     s = req.session_id
     add_history(s, "user", f"[CODE] {req.prompt}")
 
     system = (
-        "You are Boardwalk Firmware Generator. "
-        "Generate deterministic, production-grade MCU firmware."
+        "You are the Boardwalk Firmware Generator.\n"
+        "Generate deterministic, production-grade MCU firmware.\n"
+        "Return ONLY code or JSON. No markdown."
     )
 
-    messages = [{"role": "system", "content": system}] + get_history(s)
-    text = code_llm(messages)
+    text = _run_llm(system, s)
 
     add_history(s, "assistant", text)
     audit.log("ai_code", {"session": s, "prompt": req.prompt, "response": text})
@@ -114,12 +96,20 @@ async def ai_code(req: AIRequest):
     return {"success": True, "text": text}
 
 
-@router.post("/ai/image")
+@router.post("/image")
 async def ai_image(req: AIImageRequest):
     s = req.session_id
     add_history(s, "user", f"[IMAGE] {req.prompt} | style={req.style} | res={req.resolution}")
 
-    url = image_llm(req.prompt, req.style, req.resolution)
+    try:
+        img = generate_image(
+            prompt=f"{req.prompt}, style={req.style}",
+            size=req.resolution
+        )
+        url = img.data[0].url
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Image generation failed: {e}")
+
     desc = f"Generated image in style '{req.style}' at {req.resolution}."
 
     add_history(s, "assistant", desc)
