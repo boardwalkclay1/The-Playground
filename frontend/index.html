@@ -4,6 +4,24 @@
   <meta charset="UTF-8" />
   <title>Boardwalk Playground Studio</title>
   <link rel="stylesheet" href="static/style.css" />
+  <style>
+    #backend-status {
+      padding: 6px 12px;
+      border-radius: 6px;
+      margin-left: 10px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .status-ok { background:#22c55e33; color:#22c55e; }
+    .status-bad { background:#ef444433; color:#ef4444; }
+    #start-backend-btn {
+      margin-left: 10px;
+      padding: 6px 12px;
+      border-radius: 6px;
+      background: var(--accent-soft);
+      cursor: pointer;
+    }
+  </style>
 </head>
 
 <body class="playground-root">
@@ -21,6 +39,8 @@
     </div>
 
     <div class="pg-topbar-actions">
+      <span id="backend-status" class="status-bad">Checking...</span>
+      <button id="start-backend-btn" class="pg-btn">Start Backend</button>
       <button id="theme-toggle" class="pg-btn">Theme</button>
     </div>
   </header>
@@ -53,17 +73,13 @@
       <!-- BOTTOM DOCK -->
       <section class="pg-dock">
 
-        <!-- DOCK TABS -->
         <div class="pg-dock-tabs">
           <button class="pg-dock-tab active" data-dock="terminal">Terminal</button>
           <button class="pg-dock-tab" data-dock="errors">Errors</button>
           <button class="pg-dock-tab" data-dock="logs">Logs</button>
         </div>
 
-        <!-- DOCK PANELS -->
         <div class="pg-dock-panels">
-
-          <!-- TERMINAL -->
           <div class="pg-dock-panel" id="dock-terminal">
             <div class="pg-terminal-output" id="terminal-output"></div>
             <div class="pg-terminal-input-row">
@@ -73,16 +89,13 @@
             </div>
           </div>
 
-          <!-- ERRORS -->
           <div class="pg-dock-panel hidden" id="dock-errors">
             <div class="pg-errors-output" id="errors-output"></div>
           </div>
 
-          <!-- LOGS -->
           <div class="pg-dock-panel hidden" id="dock-logs">
             <div class="pg-terminal-output" id="logs-output"></div>
           </div>
-
         </div>
       </section>
 
@@ -104,6 +117,32 @@
 
   <!-- MAIN APP LOGIC -->
   <script src="static/app.js"></script>
+
+  <!-- BACKEND STATUS + START BUTTON LOGIC -->
+  <script>
+    async function checkBackend() {
+      try {
+        const res = await fetch("/api/projects");
+        if (res.ok) {
+          backendStatus.textContent = "Backend Running";
+          backendStatus.className = "status-ok";
+          return true;
+        }
+      } catch (e) {}
+      backendStatus.textContent = "Backend Offline";
+      backendStatus.className = "status-bad";
+      return false;
+    }
+
+    const backendStatus = document.getElementById("backend-status");
+    const startBtn = document.getElementById("start-backend-btn");
+
+    checkBackend();
+
+    startBtn.addEventListener("click", () => {
+      alert("To start the backend, run:\n\npython run.py\n\n(Automatic launching from browser is blocked for security.)");
+    });
+  </script>
 
 </body>
 </html>
